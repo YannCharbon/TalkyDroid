@@ -9,4 +9,7 @@
 
     <string name="hello_first_fragment">Hello first fragment</string>
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+    <string name="talkydroid_welcome_text">TalkyDroid</string>
+    <string name="talkydroid_launchericon">TalkyDroid_launcherIcon</string>
+    <string name="type_message">Type message</string>
 </resources>

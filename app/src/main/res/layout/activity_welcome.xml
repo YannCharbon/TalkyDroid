@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="false"
+    android:background="@color/backgroundLauncherColor">
+
+    <ImageView
+        android:id="@+id/logoWelcomeActivity"
+        android:layout_width="200dp"
+        android:layout_height="match_parent"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="150dp"
+        android:contentDescription="@string/talkydroid_launchericon"
+        android:src="@drawable/ic_walkie_talkie" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="150dp"
+        android:gravity="center"
+        android:text="@string/talkydroid_welcome_text"
+        android:textAllCaps="true"
+        android:textColor="#FFFFFF"
+        android:textSize="50sp"
+        android:textStyle="bold" />
+
+
+</RelativeLayout>
