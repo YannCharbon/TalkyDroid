@@ -26,11 +26,6 @@
         layout="@layout/content_conversation"
         android:layout_height="match_parent"
         android:layout_width="match_parent"
-        android:layout_marginBottom="50dp"
         />
-
-    <include
-        layout="@layout/text_layout"
-
 
 </LinearLayout>
