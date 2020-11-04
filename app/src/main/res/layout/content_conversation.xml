@@ -1,27 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_gravity="top"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    android:background="#dddddd">
+    android:orientation="vertical"
+    android:clipToPadding="false"
+    android:focusableInTouchMode="true">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/conversation_recyclerView"
-        android:layout_gravity="bottom"
+    <ListView
         android:layout_width="match_parent"
-        android:layout_height="550dp"
-        android:layout_marginTop="15dp"
-        android:layout_marginLeft="15dp"
-        android:layout_marginRight="15dp"
-        android:layout_marginBottom="15dp"/>
+        android:id="@+id/messages_view"
+        android:layout_weight="2"
+        android:divider="#FFF"
+        android:layout_height="0dp"
+        />
 
-    <include
-        layout="@layout/text_conversation" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:background="#FFF">
 
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardView_editText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            app:cardElevation="4dp"
+            app:cardCornerRadius="20dp"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginVertical="8dp">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#FFFFFF"
+                android:orientation="horizontal">
 
+                <EditText
+                    android:id="@+id/editTextConversation"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:ems="10"
+                    android:inputType="text"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginVertical="16dp"
+                    android:background="@null"
+                    android:hint="@string/type_message"
+                    android:textColor="@color/typeMessageColor" />
 
+                <ImageButton
+                    android:id="@+id/imageInsertPhoto"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginVertical="8dp"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="@drawable/ic_baseline_insert_photo"
+                    />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <ImageButton
+            android:layout_toEndOf="@+id/cardView_editText"
+            android:layout_width="55dp"
+            android:layout_height="55dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginVertical="8dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_baseline_send"
+            android:background="@drawable/ic_baseline_send_background"
+            tools:targetApi="m" />
+
+    </LinearLayout>
 </LinearLayout>

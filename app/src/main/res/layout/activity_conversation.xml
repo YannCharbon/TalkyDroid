@@ -22,10 +22,6 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <include
-        layout="@layout/content_conversation"
-        android:layout_height="match_parent"
-        android:layout_width="match_parent"
-        />
+    <include layout="@layout/content_conversation" />
 
 </LinearLayout>
