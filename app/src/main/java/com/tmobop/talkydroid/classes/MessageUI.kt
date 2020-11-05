@@ -3,6 +3,7 @@ package com.tmobop.talkydroid.classes
 class MessageUI(val content : String,
                 val time : Long,
                 val user : String,
+                val avatarID : Int,
                 val messageType : Int) {
 
     companion object {

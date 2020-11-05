@@ -7,21 +7,22 @@
     android:background="#FFF">
 
     <androidx.cardview.widget.CardView
-        android:id="@+id/conversation_avatar"
+        android:id="@+id/conversation_cardView"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_marginHorizontal="15dp"
         android:layout_marginVertical="10dp"
-        app:cardCornerRadius="60dp"
+        app:cardCornerRadius="30dp"
         app:cardBackgroundColor="#FFFFFF">
 
         <androidx.cardview.widget.CardView
             android:layout_width="60dp"
             android:layout_height="60dp"
-            app:cardCornerRadius="250dp"
+            app:cardCornerRadius="30dp"
             android:layout_gravity="center">
 
             <ImageView
+                android:id="@+id/conversation_avatar"
                 android:layout_width="65dp"
                 android:layout_height="65dp"
                 android:layout_gravity="center"
@@ -37,7 +38,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginVertical="10dp"
-        android:layout_toEndOf="@+id/conversation_avatar"
+        android:layout_toEndOf="@+id/conversation_cardView"
         android:layout_marginEnd="15dp"
         android:layout_centerVertical="true"
         android:orientation="vertical">
@@ -74,7 +75,7 @@
         android:layout_height="0.8dp"
         android:layout_alignStart="@+id/conversation_relative_layout"
         android:layout_alignEnd="@id/conversation_relative_layout"
-        android:layout_below="@+id/conversation_avatar"
+        android:layout_below="@+id/conversation_cardView"
         android:background="#AAAAAA" >
     </View>
 

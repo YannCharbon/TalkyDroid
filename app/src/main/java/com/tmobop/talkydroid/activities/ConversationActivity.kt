@@ -2,6 +2,7 @@ package com.tmobop.talkydroid.activities
 
 import android.content.Context
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
@@ -34,8 +35,8 @@ class ConversationActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar_conversation))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)       // Add a go back arrow on left of the title
 
-        // TO DO --> Change the title with the name of the interlocutor
-        supportActionBar?.title = "Interlocutor Name"
+        // Title of the toolbar
+        supportActionBar?.title = (intent.getStringExtra(MainActivity.TITLE_TEXT))
 
         //-------------------- Write text bar ----------------------------
         // TO CHANGE
@@ -51,7 +52,8 @@ class ConversationActivity : AppCompatActivity() {
                     content = editText.text.toString(),
                     time = Calendar.getInstance().timeInMillis,
                     user = App.user,
-                    messageType = MessageUI.TYPE_MESSAGE_SEND
+                    messageType = MessageUI.TYPE_MESSAGE_SEND,
+                    avatarID = 0
                 )
 
                 // Add the new message to the conversation
@@ -84,6 +86,17 @@ class ConversationActivity : AppCompatActivity() {
         conversationRecyclerView.adapter = conversationAdapter
     }
 
+    //---------------------------------------------------------------------
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+
+        if (item.itemId == android.R.id.home) {
+            finish(); // close this activity and return to preview activity (if there is any)
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    //---------------------------------------------------------------------
     private fun resetKeyboard() {
 
         // Clean text box
