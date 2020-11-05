@@ -1,9 +1,10 @@
-package com.tmobop.talkydroid
+package com.tmobop.talkydroid.activities
 
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import androidx.appcompat.app.AppCompatActivity
+import com.tmobop.talkydroid.R
 
 class WelcomeActivity : AppCompatActivity() {
 
