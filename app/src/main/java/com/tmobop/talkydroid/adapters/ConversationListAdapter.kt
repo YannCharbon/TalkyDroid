@@ -4,14 +4,11 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
 import com.tmobop.talkydroid.R
 import com.tmobop.talkydroid.classes.ConversationUI
-import com.tmobop.talkydroid.classes.MessageUI
 import java.text.SimpleDateFormat
 import java.util.*
 

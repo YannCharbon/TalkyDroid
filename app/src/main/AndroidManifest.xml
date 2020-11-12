@@ -2,6 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.tmobop.talkydroid">
 
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+
+    <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="YOUR API KEY HERE"/>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_talkie_walkie"
@@ -9,6 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_talkie_walkie_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="@string/google_maps_key" />
 
         <activity
             android:name=".activities.MainActivity"

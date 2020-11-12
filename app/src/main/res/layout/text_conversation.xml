@@ -24,7 +24,7 @@
             android:orientation="horizontal">
 
             <EditText
-                android:id="@+id/editTextConversation"
+                android:id="@+id/conversation_editText"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="2"
@@ -37,13 +37,14 @@
                 android:textColor="@color/typeMessageColor" />
 
             <ImageButton
-                android:id="@+id/imageInsertPhoto"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginVertical="8dp"
+                android:id="@+id/send_file_button"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
-                android:background="@drawable/ic_baseline_insert_photo"
+                android:rotation="30"
+                android:background="@drawable/ic_baseline_attach_file"
                 />
 
         </LinearLayout>
@@ -58,7 +59,6 @@
         android:layout_gravity="center"
         android:src="@drawable/ic_baseline_send"
         android:background="@drawable/ic_baseline_send_background"
-        android:onClick="sendMessage"
         tools:targetApi="m" />
 
 </LinearLayout>

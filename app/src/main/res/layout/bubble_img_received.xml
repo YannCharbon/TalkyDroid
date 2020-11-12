@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:paddingVertical="10dp"
     android:paddingStart="15dp"
     android:paddingEnd="60dp"
@@ -23,7 +24,6 @@
             android:layout_gravity="center">
 
             <ImageView
-                android:id="@+id/avatar_message_received"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
                 android:layout_gravity="center"
@@ -35,7 +35,7 @@
     </androidx.cardview.widget.CardView>
 
     <TextView
-        android:id="@+id/user_message_received"
+        android:id="@+id/user_image_received"
         android:layout_marginStart="15dp"
         android:layout_toEndOf="@+id/conversation_avatar"
         android:layout_alignTop="@+id/conversation_avatar"
@@ -45,26 +45,29 @@
         android:text="@string/person_name"/>
 
     <TextView
-        android:id="@+id/time_message_received"
-        android:layout_toStartOf="@+id/message_received"
-        android:layout_alignBottom="@+id/message_received"
+        android:id="@+id/time_image_received"
+        android:layout_toStartOf="@+id/image_received"
+        android:layout_alignBottom="@+id/image_received"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:textSize="12sp"
         android:text="@string/time"/>
 
-    <TextView
-        android:id="@+id/message_received"
-        android:layout_width="wrap_content"
+    <ImageView
+        android:id="@+id/image_received"
+        android:layout_width="250dp"
+        android:maxWidth="250dp"
+        android:minWidth="120dp"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/user_message_received"
-        android:layout_alignStart="@+id/user_message_received"
+        android:maxHeight="250dp"
+        android:minHeight="120dp"
+        android:layout_below="@+id/user_image_received"
+        android:layout_alignStart="@+id/user_image_received"
         android:background="@drawable/ic_bubble_message_received"
+        android:adjustViewBounds="true"
         android:elevation="2dp"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"
-        android:text="@string/message_received"
-        android:textColor="@color/colorMessageReceived"
-        android:textSize="18sp" />
+        tools:src="@drawable/ic_baseline_insert_photo"/>
 </RelativeLayout>
