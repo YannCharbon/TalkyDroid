@@ -71,6 +71,12 @@ class ConversationActivity : AppCompatActivity() {
                     avatarID = 0
                 )
 
+                // TODO --> Send message to Hardware
+
+                // TODO --> Wait for acknowledge
+
+                // IF --> OK
+
                 // Add the new message to the conversation
                 conversationAdapter.addMessage(message)
 
@@ -81,6 +87,10 @@ class ConversationActivity : AppCompatActivity() {
                 resetKeyboard()
 
                 // TODO --> Push to database
+
+                // IF --> NOK
+
+                //
             }
             else {
                 Toast.makeText(
@@ -182,6 +192,10 @@ class ConversationActivity : AppCompatActivity() {
                 messageType = MessageType.IMAGE,
                 avatarID = 0
             )
+
+            // TODO --> Send image
+
+            // TODO --> Wait acknowledge
 
             // Add the new message to the conversation
             conversationAdapter.addMessage(message)

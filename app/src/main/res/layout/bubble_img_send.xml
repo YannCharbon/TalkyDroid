@@ -4,8 +4,8 @@
     android:layout_height="wrap_content"
     xmlns:tools="http://schemas.android.com/tools"
     android:paddingVertical="10dp"
-    android:paddingEnd="15dp"
-    android:paddingStart="60dp"
+    android:paddingEnd="10dp"
+    android:paddingStart="10dp"
     android:clipToPadding="false">
 
     <ImageView
