@@ -59,6 +59,11 @@ class ConversationListAdapter(context: Context, var listener: OnItemClickListene
         notifyDataSetChanged()
     }
 
+    fun clearConversations(){
+        conversationList.clear()
+        notifyDataSetChanged()
+    }
+
     //------------------------------------------
     object DateUtils {
         fun fromMillisToTimeString(millis: Long) : String {

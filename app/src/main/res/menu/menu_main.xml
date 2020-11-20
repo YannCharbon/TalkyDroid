@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.tmobop.talkydroid.activities.MainActivity">
     <item
+        android:id="@+id/action_modrf_config"
+        android:title="USB config"
+        app:showAsAction="always"
+        android:icon="@drawable/icon_device"/>
+    <item
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"

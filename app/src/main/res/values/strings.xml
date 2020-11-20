@@ -23,4 +23,6 @@
     <string name="location">Location</string>
     <string name="file">File</string>
     <string name="gallery">Gallery</string>
+    <string name="usb_device_configuration">USB device configuration</string>
+    <string name="connected_device_information">Connected device information</string>
 </resources>
