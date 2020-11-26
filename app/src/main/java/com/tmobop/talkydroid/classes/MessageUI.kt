@@ -1,11 +1,14 @@
 package com.tmobop.talkydroid.classes
 
+import java.util.*
+
 class MessageUI(
     val content: String,
     val time: Long,
     val user: String,
     val avatarID: Int,
-    val messageType: String) {
+    val messageType: String
+) {
 
     companion object {
         const val TYPE_MESSAGE_SEND = 0

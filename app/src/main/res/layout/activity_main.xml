@@ -31,7 +31,7 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
         android:src="@drawable/ic_baseline_add_conversation"
-        android:backgroundTint="@color/backgroundLauncherColor"/>
+        app:backgroundTint="@color/backgroundLauncherColor" />
 
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

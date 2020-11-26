@@ -1,5 +1,6 @@
 package com.tmobop.talkydroid.adapters
 
+//import MessageDatabase
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -12,7 +13,7 @@ import com.tmobop.talkydroid.classes.ConversationUI
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ConversationListAdapter(context: Context, var listener: OnItemClickListener) : RecyclerView.Adapter<ConversationListAdapter.ConversationViewHolder>() {
+class ConversationListAdapter(context: Context, private var listener: OnItemClickListener) : RecyclerView.Adapter<ConversationListAdapter.ConversationViewHolder>() {
 
     private val conversationList: ArrayList<ConversationUI> = ArrayList()
 
@@ -62,7 +63,7 @@ class ConversationListAdapter(context: Context, var listener: OnItemClickListene
     //------------------------------------------
     object DateUtils {
         fun fromMillisToTimeString(millis: Long) : String {
-            val format = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            val format = SimpleDateFormat("HH:mm", Locale.getDefault())
             return format.format(millis)
         }
     }

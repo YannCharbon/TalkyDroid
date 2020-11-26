@@ -8,19 +8,7 @@
     android:orientation="vertical"
     tools:context=".activities.ConversationActivity">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:theme="@style/AppTheme.AppBarOverlay">
-
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar_conversation"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/backgroundLauncherColor"
-            app:popupTheme="@style/AppTheme.PopupOverlay" />
-
-    </com.google.android.material.appbar.AppBarLayout>
+    <include layout="@layout/conversation_toolbar" />
 
     <include layout="@layout/content_conversation" />
 

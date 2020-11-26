@@ -23,4 +23,8 @@
     <string name="location">Location</string>
     <string name="file">File</string>
     <string name="gallery">Gallery</string>
+    <string name="username">Username</string>
+    <string name="login">Login</string>
+    <string name="unknown">Unknown</string>
+    <string name="capture_image">Capture Image</string>
 </resources>

@@ -47,6 +47,15 @@
                 android:background="@drawable/ic_baseline_attach_file"
                 />
 
+            <ImageButton
+                android:id="@+id/open_camera_imageButton"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="center"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/ic_baseline_photo_camera">
+            </ImageButton>
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

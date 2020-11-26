@@ -182,7 +182,7 @@ class ConversationAdapter(context: Context) : RecyclerView.Adapter<MessageViewHo
     //------------------------------------------
     object DateUtils {
         fun fromMillisToTimeString(millis: Long) : String {
-            val format = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            val format = SimpleDateFormat("HH:mm", Locale.getDefault())
             return format.format(millis)
         }
     }
