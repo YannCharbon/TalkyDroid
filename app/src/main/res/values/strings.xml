@@ -27,4 +27,7 @@
     <string name="login">Login</string>
     <string name="unknown">Unknown</string>
     <string name="capture_image">Capture Image</string>
+    <string name="usb_device_configuration">USB device configuration</string>
+    <string name="connected_device_information">Connected device information</string>
+
 </resources>

@@ -8,7 +8,9 @@ android {
 
     defaultConfig {
         applicationId "com.tmobop.talkydroid"
+
         minSdkVersion 23
+
         targetSdkVersion 30
         versionCode 1
         versionName "1.0"
@@ -46,6 +48,10 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
     annotationProcessor 'androidx.room:room-compiler:2.2.5'
+
+    implementation 'com.github.felHR85:UsbSerial:6.1.0'
+
 
 }

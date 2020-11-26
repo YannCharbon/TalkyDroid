@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="10dp">
+
+    <TextView
+        android:id="@+id/select_file_textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/backgroundLauncherColor"
+        android:gravity="center"
+        android:padding="10dp"
+        android:scaleType="center"
+        android:text="@string/usb_device_configuration"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="15dp"
+        android:layout_below="@+id/select_file_textView"
+        android:weightSum="3">
+
+        <Button
+            android:id="@+id/dialog_config_modrf_btn_connect"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Connect"/>
+
+        <Button
+            android:id="@+id/dialog_config_modrf_btn_scan"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Scan channel"/>
+
+        <Button
+            android:id="@+id/dialog_config_modrf_btn_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="Exit"/>
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/dialog_config_modrf_progressbar_scan"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:max="254" />
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/backgroundLauncherColor"
+        android:gravity="center"
+        android:padding="10dp"
+        android:scaleType="center"
+        android:text="@string/connected_device_information"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/dialog_config_modrf_text_device_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="" />
+
+
+
+</LinearLayout>
