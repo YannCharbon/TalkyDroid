@@ -1,3 +1,31 @@
+# Install on VM
+
+Because the android emulator that is associated with Android Studio does not support external USB connection, it can be useful to be able to access physical devices (USB, COM) on a emulated machine. The following steps explain how to use Android Studio with a custom VM that allows debugging and physical external hardware acces.
+
+1. Download Android SDK https://developer.android.com/studio/releases/platform-tools
+2. Put SDK into a folder and add it to PATH (Environment variables)
+3. Download Android x86 VM for VirtualBox https://www.osboxes.org/android-x86/
+4. Perform normal installation (2048 MB of RAM)
+5. Configure VM network : Configure -> Network -> Adapter 1 -> Access mode : Bridge
+6. Go to Configure -> USB
+	- Activate USB 2.0
+	- Plug RFmodule into USB
+	- Add new filter (+) -> Select corresponding devices (FTDI...)
+7. Configure VM COM ports : Configure -> Serial ports -> Activate Port 1 & 2
+8. Validate changes
+9. Start VM
+10. Activate Developper mode (Settings -> System -> About Tablet : Click multiple times on Build number)
+11. Go to Setting -> System -> About Tablet -> Advanced -> Developper options
+	- Activate USB Debugging
+	- Root Access : Apps and ADB
+12. Install WiFi ADB from PlayStore
+13. Launch WiFi ADB and enable it (slide to right multiple times if it doesn't work).
+14. Once WiFi ADB launched, on host PC : in terminal type `adb connect <IP>:<port>`.
+15. On Android Studio : innotek GmbH Virtualbox should be shown in selected device.
+16. Install/debug as usual.
+
+
+
 # ModRfUartManager class public content resume
 
 The listener of this class must be implemented in MainActivity. Calls to others activities must be performed with help of Intents.
