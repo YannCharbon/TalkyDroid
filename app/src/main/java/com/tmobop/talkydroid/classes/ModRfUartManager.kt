@@ -48,10 +48,10 @@ const val DISCOVER_REQUEST_TYPE_REQUEST : UByte = 0u
 const val DISCOVER_REQUEST_TYPE_ANSWER : UByte = 1u
 const val DISCOVER_REQUEST_TYPE_INFO : UByte = 2u
 
-const val MAX_DEV_ADDRESS = 254
+const val MAX_DEV_ADDRESS = 31
 const val MIN_DEV_ADDRESS = 1
 const val TOT_DEV_ADDRESSES = MAX_DEV_ADDRESS - MIN_DEV_ADDRESS
-const val BROADCAST_ADDRESS: UByte = 255u
+const val BROADCAST_ADDRESS: UByte = 32u
 const val NOT_ASSIGNED_ADDRESS: UByte = 0u
 
 const val SHARED_PREFS ="ModRfUartManagerPrefs"
@@ -475,9 +475,9 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
         if(portIsOpen){
             GlobalScope.launch {
-                for(i in 1..254){
+                for(i in 1..MAX_DEV_ADDRESS){
 
-                    listener.onDiscoverProgress(i,254)
+                    listener.onDiscoverProgress(i,MAX_DEV_ADDRESS)
 
                     val packetContent = TalkyDataPacketDiscoverContent(
                         DISCOVER_REQUEST_TYPE_REQUEST,
