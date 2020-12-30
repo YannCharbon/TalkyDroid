@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="10dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/backgroundLauncherColor"
+        android:gravity="center"
+        android:padding="10dp"
+        android:scaleType="center"
+        android:text="@string/channel_scanning"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <ProgressBar
+        android:id="@+id/main_dialog_progressbar_channel_scanning"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="false"
+        android:animationResolution="50"
+        android:maxHeight="10dip"
+        android:minHeight="10dip"
+        android:layout_margin="15dp"
+        android:progressDrawable="@drawable/ic_baseline_progressbar"
+        android:max="31" />
+
+</LinearLayout>

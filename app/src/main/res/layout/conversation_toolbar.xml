@@ -19,41 +19,26 @@
             android:src="@drawable/ic_baseline_arrow_back"
             android:background="@null"
             android:layout_marginEnd="5dp"
-            android:layout_centerVertical="true"
-            >
+            android:layout_centerVertical="true"/>
 
-        </ImageButton>
-
-        <androidx.cardview.widget.CardView
-            android:id="@+id/conversation_toolbar_avatar_cardView"
+        <ImageView
+            android:id="@+id/conversation_toolbar_avatar_imageView"
             android:layout_toEndOf="@+id/conversation_toolbar_back_arrow_imageButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:padding="0dp"
+            android:layout_margin="1dp"
+            android:background="@drawable/ic_circle_avatar"
             android:layout_centerVertical="true"
-            app:cardCornerRadius="20dp"
-            app:cardBackgroundColor="#FFFFFF">
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                app:cardCornerRadius="20dp"
-                android:layout_gravity="center">
-
-                <ImageView
-                    android:id="@+id/conversation_toolbar_avatar_imageView"
-                    android:layout_width="45dp"
-                    android:layout_height="45dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_baseline_unknown_user"
-                    android:scaleType="centerCrop"/>
-
-            </androidx.cardview.widget.CardView>
-
-        </androidx.cardview.widget.CardView>
+            android:src="@drawable/ic_baseline_unknown_user"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintHorizontal_bias="0"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/conversation_toolbar_title_textView"
-            android:layout_toEndOf="@+id/conversation_toolbar_avatar_cardView"
+            android:layout_toEndOf="@+id/conversation_toolbar_avatar_imageView"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_centerVertical="true"

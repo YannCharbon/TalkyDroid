@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
+    android:paddingVertical="10dp"
+    android:paddingEnd="10dp"
+    android:paddingStart="10dp"
+    android:clipToPadding="false">
+
+    <RelativeLayout
+        android:id="@+id/relativeLayout_loc_send"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:background="@drawable/ic_bubble_message_send"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
+        android:elevation="2dp"
+        android:maxWidth="250dp"
+        android:minWidth="120dp"
+        android:maxHeight="250dp"
+        android:minHeight="120dp"
+        android:layout_alignParentEnd="true">
+
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/map_loc_send"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_centerInParent="true"
+            android:clickable="true"
+            android:apiKey="@string/google_maps_key"
+            map:liteMode="true"
+            map:mapType="normal"/>
+
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/time_loc_send"
+        android:layout_toStartOf="@+id/relativeLayout_loc_send"
+        android:layout_alignBottom="@+id/relativeLayout_loc_send"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:textSize="12sp"
+        android:text="@string/time"/>
+
+</RelativeLayout>

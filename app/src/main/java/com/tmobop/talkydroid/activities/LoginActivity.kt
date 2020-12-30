@@ -16,7 +16,9 @@ import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.squareup.picasso.Picasso
 import com.tmobop.talkydroid.R
+import com.tmobop.talkydroid.classes.CircleTransformation
 import java.util.*
 
 
@@ -32,7 +34,6 @@ class LoginActivity : AppCompatActivity() {
     private val userINFO : String = "user_information"
     private lateinit var sharedPreferences: SharedPreferences
     private val userNameKey = "userNameKey"
-    private val userUUIDKey = "userUUIDKey"
     private val userAvatarPathKey = "userAvatarPathKey"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,20 +51,6 @@ class LoginActivity : AppCompatActivity() {
         sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
         val editor: Editor = sharedPreferences.edit()
 
-        // If no user UUID in memory --> generate a new one, else --> recover the old one
-        if (sharedPreferences.contains(userUUIDKey)) {
-            Toast.makeText(
-                this,
-                "userUUID : " + sharedPreferences.getString(userUUIDKey, "unknown"),
-                Toast.LENGTH_LONG
-            ).show()
-        }
-        else {
-            val newUUID = UUID.randomUUID().toString()
-            editor.putString(userUUIDKey, newUUID)
-            Toast.makeText(this, "NEW UUID : $newUUID", Toast.LENGTH_LONG).show()
-        }
-
         // If userName in memory --> display it on the screen
         if (sharedPreferences.contains(userNameKey)) {
             userNameEditText.setText(sharedPreferences.getString(userNameKey, "unknown"))
@@ -73,7 +60,13 @@ class LoginActivity : AppCompatActivity() {
         if (sharedPreferences.contains(userAvatarPathKey)) {
             if (isStoragePermissionGranted()) {
                 val avatarPath = sharedPreferences.getString(userAvatarPathKey, "")
-                avatarImageButton.setImageURI(Uri.parse(avatarPath))
+
+                Picasso.get()
+                    .load(Uri.parse(avatarPath))
+                    .error(R.drawable.ic_baseline_unknown_user)
+                    .placeholder(R.drawable.ic_baseline_unknown_user)
+                    .transform(CircleTransformation())
+                    .into(avatarImageButton)
             }
             else {
                 Toast.makeText(this, "Cannot show the profile picture, because the app do not have the permission required", Toast.LENGTH_LONG).show()
@@ -94,7 +87,6 @@ class LoginActivity : AppCompatActivity() {
                 editor.apply()
 
                 val intent = Intent(this, MainActivity::class.java)
-                intent.putExtra(USER_UUID, sharedPreferences.getString(userUUIDKey, "unknown"))
                 intent.putExtra(USER_NAME, userNameEditText.text.toString())
                 startActivity(intent)
                 finish()
@@ -114,7 +106,13 @@ class LoginActivity : AppCompatActivity() {
         //------------------------ Send image -----------------------------
         if (resultCode == RESULT_OK && requestCode == pickImage) {
             imageUri = data?.data
-            avatarImageButton.setImageURI(Uri.parse(imageUri.toString()))
+
+            Picasso.get()
+                .load(Uri.parse(imageUri.toString()))
+                .error(R.drawable.ic_baseline_unknown_user)
+                .placeholder(R.drawable.ic_baseline_unknown_user)
+                .transform(CircleTransformation())
+                .into(avatarImageButton)
 
             // Push the avatar image path to shared preferences
             sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
@@ -150,7 +148,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val USER_UUID = "user_uuid"
         const val USER_NAME = "user_name"
     }
 }

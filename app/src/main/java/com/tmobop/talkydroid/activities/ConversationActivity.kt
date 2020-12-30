@@ -1,13 +1,13 @@
 package com.tmobop.talkydroid.activities
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.MenuItem
@@ -16,21 +16,36 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.tmobop.talkydroid.R
+import com.tmobop.talkydroid.activities.MainActivity.Companion.RECEIVER_UUID
 import com.tmobop.talkydroid.activities.MainActivity.Companion.TITLE_TEXT
 import com.tmobop.talkydroid.activities.MainActivity.Companion.USER_NAME
-import com.tmobop.talkydroid.adapters.App
+import com.tmobop.talkydroid.activities.MainActivity.Companion.USER_UUID
 import com.tmobop.talkydroid.adapters.ConversationAdapter
 import com.tmobop.talkydroid.classes.MessageType
-import com.tmobop.talkydroid.classes.MessageUI
+import com.tmobop.talkydroid.classes.ModRfUartManager
+import com.tmobop.talkydroid.services.NotificationService
+import com.tmobop.talkydroid.storage.MessageEntity
+import com.tmobop.talkydroid.storage.MessageViewModel
+import com.tmobop.talkydroid.storage.UserEntity
+import com.tmobop.talkydroid.storage.UserWithMessagesViewModel
+import kotlinx.coroutines.launch
 import java.util.*
+import kotlin.collections.List as List1
 
 
-class ConversationActivity : AppCompatActivity() {
+class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
     private lateinit var conversationEditText: EditText
+
+    // Button variables
     private lateinit var btnSendMessage: ImageButton
     private lateinit var btnSendFiles: ImageButton
     private lateinit var btnSendImage: ImageButton
@@ -38,75 +53,101 @@ class ConversationActivity : AppCompatActivity() {
     private lateinit var btnSendDocument: ImageButton
     private lateinit var btnBackImageButton: ImageButton
     private lateinit var btnOpenCamera : ImageButton
+    private lateinit var btnSettings: ImageButton
+
     private lateinit var imageAvatarImageView: ImageView
     private lateinit var titleTextView: TextView
-    private lateinit var btnSettings: ImageButton
+
     private lateinit var conversationAdapter: ConversationAdapter
     private lateinit var conversationRecyclerView: RecyclerView
-    private lateinit var conversationLayoutManager: LinearLayoutManager
+    private lateinit var messagesViewModel: MessageViewModel
+    private lateinit var userWithMessagesViewModel: UserWithMessagesViewModel
+
     private lateinit var mainActivity: Intent
 
     private var imageUriFromGallery: Uri? = null
     private var imageUriFromCamera: Uri? = null
 
+    private lateinit var userUUID : String
+    private lateinit var receiverUUID : String
+    private lateinit var userName : String
+
+    // Hardware variables
+    private lateinit var mModRfUartManager: ModRfUartManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_conversation)
 
-        //----------------------- Toolbar ------------------------------
-        // Back button
-        btnBackImageButton = findViewById(R.id.conversation_toolbar_back_arrow_imageButton)
+        //-------------------------------- Get datas from intent -----------------------------------
+        userUUID = intent.getStringExtra(USER_UUID).toString()
+        receiverUUID = intent.getStringExtra(RECEIVER_UUID).toString()
+        userName = intent.getStringExtra(USER_NAME).toString()
 
-        btnBackImageButton.setOnClickListener {
-            mainActivity = Intent(this, MainActivity::class.java)
-            startActivity(mainActivity)
+        //------------------------------------ Notifications ---------------------------------------
+        if (isMyServiceRunning(NotificationService::class.java)) {
+            stopService(Intent(this, NotificationService::class.java))
         }
 
-        // Avatar image
-        imageAvatarImageView = findViewById(R.id.conversation_toolbar_avatar_imageView)
-        // TODO --> set the image view to  avatar image
+        //-------------------------------------- Hardware ------------------------------------------
+        mModRfUartManager = ModRfUartManager(this, this)
 
-        // Title edit text
-        titleTextView = findViewById(R.id.conversation_toolbar_title_textView)
-        titleTextView.text = intent.getStringExtra(TITLE_TEXT)
+        //------------------------------------ Conversation ----------------------------------------
+        // Conversation recycler view
+        conversationRecyclerView = findViewById(R.id.messageListRecyclerView)
+        conversationRecyclerView.setHasFixedSize(true)
+        conversationRecyclerView.layoutManager = LinearLayoutManager(
+            this,
+            LinearLayoutManager.VERTICAL,
+            false
+        )
 
-        // Settings button
-        btnSettings = findViewById(R.id.conversation_toolbar_settings_button)
+        // Conversation adapter
+        conversationAdapter = ConversationAdapter(this, mutableListOf())
+        conversationRecyclerView.adapter = conversationAdapter
 
-        // TODO --> Do something when click on settings button
+        // Get the user UUID
+        ConversationAdapter.App.userUUID = UUID.fromString(userUUID)
 
+        // View model
+        messagesViewModel = ViewModelProvider(this).get(MessageViewModel::class.java)
+        userWithMessagesViewModel = ViewModelProvider(this).get(UserWithMessagesViewModel::class.java)
+
+        // Get users from database
+        messagesViewModel.getAllMessages().observe(this, { messages ->
+            conversationAdapter.swapMessages(messages)
+
+            // Scroll the RecyclerView to the last added element
+            conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1)
+        })
 
         //-------------------- Write text bar ----------------------------
-        App.user = intent.getStringExtra(USER_NAME).toString()
-
         conversationEditText = findViewById(R.id.conversation_editText)
         btnSendMessage = findViewById(R.id.send_message_button)
 
         // Send message button
         btnSendMessage.setOnClickListener {
             if(conversationEditText.text.isNotEmpty()) {
-                val message = MessageUI(
+
+                val message = MessageEntity(
+                    messageId = null,
+                    senderId = UUID.fromString(userUUID),
+                    receiverId = UUID.fromString(receiverUUID),
                     content = conversationEditText.text.toString(),
                     time = Calendar.getInstance().timeInMillis,
-                    user = App.user,
-                    messageType = MessageType.TEXT,
-                    avatarID = 0
+                    messageType = MessageType.TEXT
                 )
 
                 // TODO --> Send message to Hardware
+                mModRfUartManager.writeText(conversationEditText.text.toString(), receiverUUID)
 
                 // TODO --> Wait for acknowledge
 
                 // IF --> OK
 
-                // Push message to data base
-                //Storage.writeData(this, message, message.receiverUUID.toString())
-
-                // Add the new message to the conversation
-                conversationAdapter.addMessage(message)
-
-                // Scroll the RecyclerView to the last added element
-                conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1);
+                lifecycleScope.launch {
+                    messagesViewModel.insertMessage(message)
+                }
 
                 // Reset the keyboard
                 resetKeyboard()
@@ -142,7 +183,10 @@ class ConversationActivity : AppCompatActivity() {
             btnSendImage = dialogView.findViewById(R.id.send_image_button)
 
             btnSendImage.setOnClickListener {
-                val gallery = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+                val gallery = Intent(
+                    Intent.ACTION_PICK,
+                    MediaStore.Images.Media.INTERNAL_CONTENT_URI
+                )
                 startActivityForResult(gallery, PICK_IMAGE_FROM_GALLERY)
                 alertDialog.dismiss()
             }
@@ -151,8 +195,26 @@ class ConversationActivity : AppCompatActivity() {
             btnSendLocation = dialogView.findViewById(R.id.send_location_button)
 
             btnSendLocation.setOnClickListener {
-                // TODO
-                Toast.makeText(this, "SEND LOCATION", Toast.LENGTH_SHORT).show()
+                // Check permissions
+                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_DENIED ||
+                    checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    == PackageManager.PERMISSION_DENIED)
+                {
+                    // Permission denied
+                    val permissions = arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+
+                    // Show pop up to request permission
+                    requestPermissions(permissions, PERMISSION_CODE_LOCATION)
+                }
+                else {
+                    // Permission granted
+                    shareLocation()
+                }
+
                 alertDialog.dismiss()
             }
 
@@ -171,39 +233,49 @@ class ConversationActivity : AppCompatActivity() {
         btnOpenCamera = findViewById(R.id.open_camera_imageButton)
 
         btnOpenCamera.setOnClickListener {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (checkSelfPermission(Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_DENIED ||
-                    checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_DENIED
-                ) {
-                    // Permission denied
-                    val permission = arrayOf(
-                        Manifest.permission.CAMERA,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    )
+            if (checkSelfPermission(Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_DENIED ||
+                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_DENIED
+            ) {
+                // Permission denied
+                val permission = arrayOf(
+                    Manifest.permission.CAMERA,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                )
 
-                    // Show pop up to request permission
-                    requestPermissions(permission, PERMISSION_CODE)
-                } else {
-                    // Permission granded
-                    openCamera()
-                }
+                // Show pop up to request permission
+                requestPermissions(permission, PERMISSION_CODE_CAMERA)
             } else {
-                // system OS not supported
+                // Permission granted
                 openCamera()
             }
         }
 
-        //--------------------- Conversation ----------------------------
+        //----------------------- Toolbar ------------------------------
+        // Back button
+        btnBackImageButton = findViewById(R.id.conversation_toolbar_back_arrow_imageButton)
 
-        // Conversation recycler view
-        conversationRecyclerView = findViewById(R.id.messageListRecyclerView)
-        conversationRecyclerView.setHasFixedSize(true)
-        conversationLayoutManager = LinearLayoutManager(this)
-        conversationRecyclerView.layoutManager = conversationLayoutManager
-        conversationAdapter = ConversationAdapter(this)
-        conversationRecyclerView.adapter = conversationAdapter
+        btnBackImageButton.setOnClickListener {
+            mainActivity = Intent(this, MainActivity::class.java)
+            mainActivity.putExtra(USER_UUID, userUUID)
+            mainActivity.putExtra(USER_NAME, userName)
+            startActivity(mainActivity)
+            finish()
+        }
+
+        // Avatar image
+        imageAvatarImageView = findViewById(R.id.conversation_toolbar_avatar_imageView)
+        // TODO --> set the image view to  avatar image
+
+        // Title edit text
+        titleTextView = findViewById(R.id.conversation_toolbar_title_textView)
+        titleTextView.text = intent.getStringExtra(TITLE_TEXT)
+
+        // Settings button
+        btnSettings = findViewById(R.id.conversation_toolbar_settings_button)
+
+        // TODO --> Do something when click on settings button
     }
 
     //---------------------------------------------------------------------
@@ -234,6 +306,11 @@ class ConversationActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
+        // Stop the service
+        stopService(Intent(this, NotificationService::class.java))
+
+        // Get the hardware manager
+        mModRfUartManager = ModRfUartManager(this, this)
     }
 
     //---------------------------------------------------------------------
@@ -245,46 +322,52 @@ class ConversationActivity : AppCompatActivity() {
 
             imageUriFromGallery = data?.data
 
-            val message = MessageUI(
+            val message = MessageEntity(
+                messageId = null,
+                senderId = UUID.fromString(userUUID),
+                receiverId = UUID.fromString(receiverUUID),
                 content = imageUriFromGallery.toString(),
                 time = Calendar.getInstance().timeInMillis,
-                user = App.user,
-                messageType = MessageType.IMAGE,
-                avatarID = 0
+                messageType = MessageType.IMAGE
             )
 
-            // TODO --> Send image
+            // TODO --> Send image with hardware
 
             // TODO --> Wait acknowledge
 
-            // Add the new message to the conversation
-            conversationAdapter.addMessage(message)
-
-            // Scroll the RecyclerView to the last added element
-            conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1);
+            // Add message to database
+            lifecycleScope.launch {
+                messagesViewModel.insertMessage(message)
+            }
         }
 
         //----------------------------- Send image from camera -------------------------------------
         if (resultCode == RESULT_OK && requestCode == PICK_IMAGE_FROM_CAMERA) {
 
-            val message = MessageUI(
+            val message = MessageEntity(
+                messageId = null,
+                senderId = UUID.fromString(userUUID),
+                receiverId = UUID.fromString(receiverUUID),
                 content = imageUriFromCamera.toString(),
                 time = Calendar.getInstance().timeInMillis,
-                user = App.user,
-                messageType = MessageType.IMAGE,
-                avatarID = 0
+                messageType = MessageType.IMAGE
             )
 
             // TODO --> Send image
 
             // TODO --> Wait acknowledge
 
-            // Add the new message to the conversation
-            conversationAdapter.addMessage(message)
-
-            // Scroll the RecyclerView to the last added element
-            conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1);
+            // Add message to database
+            lifecycleScope.launch {
+                messagesViewModel.insertMessage(message)
+            }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        val serviceIntent = Intent(this, NotificationService::class.java)
+        startService(serviceIntent)
     }
 
     //--------------------------------------- Camera -----------------------------------------------
@@ -292,7 +375,10 @@ class ConversationActivity : AppCompatActivity() {
         val contentCameraValues = ContentValues()
         contentCameraValues.put(MediaStore.Images.Media.TITLE, "New Picture")
         contentCameraValues.put(MediaStore.Images.Media.DESCRIPTION, "From the Camera")
-        imageUriFromCamera = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentCameraValues)
+        imageUriFromCamera = contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentCameraValues
+        )
 
         //Camera intent
         val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
@@ -300,15 +386,87 @@ class ConversationActivity : AppCompatActivity() {
         startActivityForResult(cameraIntent, PICK_IMAGE_FROM_CAMERA)
     }
 
-    //-------------------------------------- Permissions -------------------------------------------
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        when(requestCode) {
-            PERMISSION_CODE -> {
-                if(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // Permission from popup granted
-                    openCamera()
+
+    //----------------------------------- ShareLocation --------------------------------------------
+    private fun shareLocation() {
+
+        lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+
+        // Check permissions
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // Permission denied -> Nothing to do since we already prompt the user for permissions
+        }
+        else { // Permission granted -> Share location
+
+            // Get the location provider
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+
+            // Get the last location
+            fusedLocationProviderClient.lastLocation.addOnSuccessListener {
+
+                // Check if location is not null
+                if (it != null) {
+
+                    // Get latitude and longitude
+                    val latitude = it.latitude.toString()
+                    val longitude = it.longitude.toString()
+
+                    // Display the coords
+                    //Toast.makeText(this, "Latitude = $latitude, Longitude = $longitude", Toast.LENGTH_LONG).show()
+
+                    // Create the message to send
+                    val message = MessageEntity(
+                        messageId = null,
+                        senderId = UUID.fromString(userUUID),
+                        receiverId = UUID.fromString(receiverUUID),
+                        content = "$latitude,$longitude",
+                        time = Calendar.getInstance().timeInMillis,
+                        messageType = MessageType.LOCATION
+                    )
+
+                    // Send message to hardware
+                    mModRfUartManager.writeText(message.content, receiverUUID, isLocation = true)
+
+                    // Push to database
+                    lifecycleScope.launch {
+                        messagesViewModel.insertMessage(message)
+                    }
                 }
                 else {
+                    Toast.makeText(this, "The location could not be obtained...", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    //-------------------------------------- Permissions -------------------------------------------
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        when(requestCode) {
+            PERMISSION_CODE_CAMERA -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission from popup granted
+                    openCamera()
+                } else {
+                    // Permission from popup was denied
+                    Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+                }
+            }
+            PERMISSION_CODE_LOCATION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission from popup granted
+                    shareLocation()
+                } else {
                     // Permission from popup was denied
                     Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
                 }
@@ -316,10 +474,110 @@ class ConversationActivity : AppCompatActivity() {
         }
     }
 
+    private fun isMyServiceRunning(serviceClass : Class<*> ) : Boolean{
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
+    }
+
     //-------------------------------------------------------------------
     companion object {
-        const val PERMISSION_CODE = 1000
+        const val PERMISSION_CODE_CAMERA = 1000
+        const val PERMISSION_CODE_LOCATION = 1001
         const val PICK_IMAGE_FROM_GALLERY = 100
         const val PICK_IMAGE_FROM_CAMERA = 101
+    }
+
+    override fun onTextReceived(string: String, senderUUID: String) {
+
+        runOnUiThread {
+            val message = MessageEntity(
+                messageId = null,
+                senderId = UUID.fromString(receiverUUID),
+                receiverId = UUID.fromString(userUUID),
+                content = string,
+                time = Calendar.getInstance().timeInMillis,
+                messageType = MessageType.TEXT
+            )
+
+            // Add message received to database
+            lifecycleScope.launch {
+                messagesViewModel.insertMessage(message)
+            }
+        }
+    }
+
+    override fun onLocationReceived(location: String, senderUUID: String) {
+        runOnUiThread {
+            val message = MessageEntity(
+                messageId = null,
+                senderId = UUID.fromString(receiverUUID),
+                receiverId = UUID.fromString(userUUID),
+                content = location,
+                time = Calendar.getInstance().timeInMillis,
+                messageType = MessageType.LOCATION
+            )
+
+            // Add message received to database
+            lifecycleScope.launch {
+                messagesViewModel.insertMessage(message)
+            }
+        }
+    }
+
+    override fun onError(customText: String, e: Exception) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onDiscoverProgress(currentAddress: Int, totalAddresses: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onDiscoverFinished(devicesFoundInChannel: ArrayList<ModRfUartManager.DeviceInChannel>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun onDeviceJoinedNetwork(device: ModRfUartManager.DeviceInChannel) {
+        runOnUiThread {
+            Toast.makeText(this, "New device joined network", Toast.LENGTH_SHORT).show()
+        }
+
+        lifecycleScope.launch {
+            val newConversation = UserEntity(
+                UUID.fromString(device.userUUID),
+                device.userName,
+                "",
+                online = true
+            )
+            userWithMessagesViewModel.insertUser(newConversation)
+        }
+    }
+
+    override fun onDeviceAttached() {
+        runOnUiThread {
+            Toast.makeText(this, "Device attached", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onDeviceDetached() {
+        runOnUiThread {
+            Toast.makeText(this, "Device detached", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onDeviceOpened() {
+        runOnUiThread {
+            Toast.makeText(this, "Device opened", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onDeviceOpenError() {
+        runOnUiThread {
+            Toast.makeText(this, "Device open error", Toast.LENGTH_SHORT).show()
+        }
     }
 }

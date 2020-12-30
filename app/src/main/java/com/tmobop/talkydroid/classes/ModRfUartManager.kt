@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.widget.Toast
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
@@ -34,6 +35,9 @@ const val NO_DRIVER_AVAILABLE = 0
 const val DRIVER_NO_PERMISSION = 1
 const val CONNECTION_NULL = 2
 const val GET_UART_DEVICES_SUCCESS = 3
+
+const val USB_CONNECTED = 0
+const val USB_DISCONNECTED = 1
 
 const val SUCCESS = 0
 const val ERROR = 1
@@ -65,23 +69,11 @@ const val ACTION_USB_DEV_DETACHED = "android.hardware.usb.action.USB_DEVICE_DETA
 
 class ModRfUartManager(context: Context, listener: Listener) {
 
-    private var usbManager: UsbManager? = null
-    private var device: UsbDevice? = null
-    private var connection: UsbDeviceConnection? = null
-    private var serialPort: UsbSerialDevice? = null
-
-    private var localAddress: UByte = 0u  //TODO change to 0u
-    public var channel: UByte = 0u
-    public var userName: String = "Default name"
-    public var userUUID: String = ""
-
     data class DeviceInChannel(
         val userUUID: String,
         val address: UByte,
         val userName: String
     )
-
-    public var devicesInChannel = ArrayList<DeviceInChannel>()
 
     data class UsbDeviceProperties(
         val deviceName : String,
@@ -93,14 +85,10 @@ class ModRfUartManager(context: Context, listener: Listener) {
     enum class PermissionState {
         NONE, PENDING, TREATED
     }
-    private var permissionState = PermissionState.NONE
-
-    private var portIsOpen = false
 
     enum class TimeoutState{
         NONE, PENDING, OCCURED, CANCELLED
     }
-    private var timeoutState: TimeoutState = TimeoutState.NONE
 
     data class TalkyDataPacketFrame(
         var channel: UByte,
@@ -124,12 +112,9 @@ class ModRfUartManager(context: Context, listener: Listener) {
         var userName: ByteArray
     )
 
-
-
-    private var mListener: ModRfUartManager.Listener? = null
-
     public interface Listener{
         public fun onTextReceived(string: String, senderUUID: String)
+        public fun onLocationReceived(location: String, senderUUID: String)
         public fun onError(customText: String, e: java.lang.Exception)
         public fun onDiscoverProgress(currentAddress: Int, totalAddresses: Int)
         public fun onDiscoverFinished(devicesFoundInChannel: ArrayList<DeviceInChannel>)
@@ -196,7 +181,28 @@ class ModRfUartManager(context: Context, listener: Listener) {
     companion object{
         lateinit var activityContext : Context
 
+        public var usbManager: UsbManager? = null
+        private var device: UsbDevice? = null
+        private var connection: UsbDeviceConnection? = null
+        private var serialPort: UsbSerialDevice? = null
+
+        private var localAddress: UByte = 0u  //TODO change to 0u
+        public var channel: UByte = 0u
+        public var userName: String = "Default name"
+        public var userUUID: String = ""
+
+        public var devicesInChannel = ArrayList<DeviceInChannel>()
+
+        private var mListener: ModRfUartManager.Listener? = null
+
+        private var timeoutState: TimeoutState = TimeoutState.NONE
+
+        private var permissionState = PermissionState.NONE
+
+        private var portIsOpen = false
+
     }
+    var companion = Companion
 
     public fun close(){
         if(serialPort != null){
@@ -207,9 +213,22 @@ class ModRfUartManager(context: Context, listener: Listener) {
         //readThread.join()
     }
 
+    public fun checkUSB() : Int {
+        usbManager = activityContext.getSystemService(Context.USB_SERVICE) as UsbManager
+
+        val usbDevices : MutableMap<String, UsbDevice> = usbManager!!.deviceList
+
+        return if(usbDevices.isEmpty()) {
+            USB_DISCONNECTED
+        } else {
+            USB_CONNECTED
+        }
+    }
+
     public fun getDevice() : Int{
 
         usbManager = activityContext.getSystemService(Context.USB_SERVICE) as UsbManager
+
         //val usbDevices = usbManager!!.deviceList
 
         val usbDevices : MutableMap<String, UsbDevice> = usbManager!!.deviceList
@@ -220,11 +239,15 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
         device = usbDevices.values.first()
 
-        if(!usbManager!!.hasPermission(device)) {
-            val usbPermissionIntent =
-                PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
-            usbManager!!.requestPermission(device, usbPermissionIntent)
-        }
+        //if(!usbManager!!.hasPermission(device)) {
+        //    val usbPermissionIntent =
+        //        PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
+        //    usbManager!!.requestPermission(device, usbPermissionIntent)
+        //}
+
+        val usbPermissionIntent =
+            PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
+        usbManager!!.requestPermission(device, usbPermissionIntent)
 
         return GET_UART_DEVICES_SUCCESS
     }
@@ -341,11 +364,19 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                 resultText += String(dataPacketContentTextContent.text)
                             }
 
-                            var senderUUID: String = addressToUuid(readPacketList[0].senderAddress)
-
-                            if(listener != null){
-                                listener.onTextReceived(resultText, senderUUID)
+                            val senderUUID: String = addressToUuid(readPacketList[0].senderAddress)
+                            listener?.onTextReceived(resultText, senderUUID)
+                        }
+                        TYPE_LOC -> {
+                            var resultText: String = ""
+                            for (packet in readPacketList){
+                                val dataPacketContentTextContent = byteArrayToTextContent(packet.content)
+                                resultText += String(dataPacketContentTextContent.text)
                             }
+
+                            val senderUUID: String = addressToUuid(readPacketList[0].senderAddress)
+
+                            listener?.onLocationReceived(resultText, senderUUID)
                         }
                         TYPE_DISCOVER -> {
 
@@ -407,7 +438,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
     }
 
-    public fun writeText(text: String, destUserUUID: String) : Int{
+    public fun writeText(text: String, destUserUUID: String, isLocation: Boolean = false) : Int{
         if(portIsOpen){
 
             var destAddress: UByte = uuidToAddress(destUserUUID)
@@ -433,17 +464,32 @@ class ModRfUartManager(context: Context, listener: Listener) {
                         contentText!!
                     )
 
-                    packets.add(
-                        ModRfUartManager.TalkyDataPacketFrame(
-                            channel,
-                            localAddress,
-                            destAddress,
-                            packetsNumber.toUShort(),
-                            i.toUShort(),
-                            TYPE_TEXT,
-                            textContentToByteArray(packetContent)
+                    if (isLocation) {
+                        packets.add(
+                            ModRfUartManager.TalkyDataPacketFrame(
+                                channel,
+                                localAddress,
+                                destAddress,
+                                packetsNumber.toUShort(),
+                                i.toUShort(),
+                                TYPE_LOC,
+                                textContentToByteArray(packetContent)
+                            )
                         )
-                    )
+                    }
+                    else {
+                        packets.add(
+                            ModRfUartManager.TalkyDataPacketFrame(
+                                channel,
+                                localAddress,
+                                destAddress,
+                                packetsNumber.toUShort(),
+                                i.toUShort(),
+                                TYPE_TEXT,
+                                textContentToByteArray(packetContent)
+                            )
+                        )
+                    }
                 } catch (e: java.lang.Exception){
                     listener!!.onError("Could not split text data into packets", e)
                 }
@@ -572,6 +618,9 @@ class ModRfUartManager(context: Context, listener: Listener) {
         var i = 0
         if(devicesInChannel.isNotEmpty()){
             while(devicesInChannel[i].address != address){ i++ }
+            //if (devicesInChannel[i].address == localAddress) {
+            //    return ""
+            //}
             return devicesInChannel[i].userUUID
         } else {
             return ""

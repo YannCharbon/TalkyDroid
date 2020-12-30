@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Toolbar xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_height="60dp"
+    android:layout_width="match_parent"
+    android:background="@color/backgroundLauncherColor"
+    android:orientation="horizontal"
+    android:titleTextColor="@android:color/white">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:layout_marginStart="10dp"
+            android:textColor="@android:color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:text="@string/talkydroid">
+        </TextView>
+
+        <ImageButton
+            android:id="@+id/toolbar_main_imageView_settings"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_alignParentEnd="true"
+            android:src="@drawable/ic_baseline_settings"
+            android:background="@null"
+            android:layout_marginEnd="15dp"
+            android:layout_centerVertical="true"
+            >
+
+        </ImageButton>
+
+        <ImageButton
+            android:id="@+id/toolbar_main_imageView_usbConnected"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_toStartOf="@+id/toolbar_main_imageView_settings"
+            android:src="@drawable/ic_baseline_settings_remote_gray"
+            android:background="@null"
+            android:layout_marginEnd="15dp"
+            android:layout_centerVertical="true"
+            android:contentDescription="@string/scan_channels">
+
+        </ImageButton>
+
+    </RelativeLayout>
+
+</Toolbar>
+

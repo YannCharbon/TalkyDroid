@@ -3,13 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:map="http://schemas.android.com/apk/res-auto"
     android:paddingVertical="10dp"
     android:paddingStart="15dp"
     android:paddingEnd="60dp"
     android:clipToPadding="false">
 
     <ImageView
-        android:id="@+id/avatar_message_received"
+        android:id="@+id/avatar_location_received"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_alignParentStart="true"
@@ -22,27 +23,40 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/time_message_received"
-        android:layout_toStartOf="@+id/message_received"
-        android:layout_alignBottom="@+id/message_received"
-        android:layout_below="@+id/avatar_message_received"
+        android:id="@+id/time_location_received"
+        android:layout_toStartOf="@+id/relativeLayout_loc_received"
+        android:layout_alignBottom="@+id/relativeLayout_loc_received"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="12sp"
         android:text="@string/time"/>
 
-    <TextView
-        android:id="@+id/message_received"
-        android:layout_width="wrap_content"
+    <RelativeLayout
+        android:id="@+id/relativeLayout_loc_received"
+        android:layout_width="250dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_toEndOf="@+id/avatar_message_received"
-        android:layout_alignTop="@+id/avatar_message_received"
+        android:layout_toEndOf="@+id/avatar_location_received"
+        android:padding="10dp"
         android:background="@drawable/ic_bubble_message_received"
+        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
         android:elevation="2dp"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:text="@string/message_received"
-        android:textColor="@color/colorMessageReceived"
-        android:textSize="18sp" />
+        android:maxWidth="250dp"
+        android:minWidth="120dp"
+        android:maxHeight="250dp"
+        android:minHeight="120dp">
+
+        <com.google.android.gms.maps.MapView
+            android:id="@+id/map_loc_received"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_centerInParent="true"
+            android:clickable="true"
+            android:apiKey="@string/google_maps_key"
+            map:liteMode="true"
+            map:mapType="normal"/>
+
+    </RelativeLayout>
+
 </RelativeLayout>
