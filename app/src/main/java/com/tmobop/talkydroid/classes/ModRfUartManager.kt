@@ -9,7 +9,6 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
-import android.widget.Toast
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
@@ -127,6 +126,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
     private val usbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            permissionLock = false
             if (intent.action == INTENT_GET_USB_PERMISSION) {
                 val granted: Boolean =
                     intent.extras!!.getBoolean(UsbManager.EXTRA_PERMISSION_GRANTED)
@@ -178,6 +178,16 @@ class ModRfUartManager(context: Context, listener: Listener) {
         return mListener
     }
 
+    @Synchronized
+    fun setListener(listener: ModRfUartManager.Listener) {
+        mListener = listener
+    }
+
+    fun changeContext(context: Context, listener: Listener){
+        mListener = listener
+        activityContext = context
+    }
+
     companion object{
         lateinit var activityContext : Context
 
@@ -200,6 +210,8 @@ class ModRfUartManager(context: Context, listener: Listener) {
         private var permissionState = PermissionState.NONE
 
         private var portIsOpen = false
+
+        private var permissionLock = false
 
     }
     var companion = Companion
@@ -231,15 +243,16 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
         device = usbDevices.values.first()
 
-        //if(!usbManager!!.hasPermission(device)) {
-        //    val usbPermissionIntent =
-        //        PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
-        //    usbManager!!.requestPermission(device, usbPermissionIntent)
-        //}
+        if(!usbManager!!.hasPermission(device) && !permissionLock) {
+            permissionLock = true
+            val usbPermissionIntent =
+                PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
+            usbManager!!.requestPermission(device, usbPermissionIntent)
+        }
 
-        val usbPermissionIntent =
-            PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
-        usbManager!!.requestPermission(device, usbPermissionIntent)
+        //val usbPermissionIntent =
+        //    PendingIntent.getBroadcast(activityContext, 0, Intent(INTENT_GET_USB_PERMISSION), 0)
+        //usbManager!!.requestPermission(device, usbPermissionIntent)
 
         return GET_UART_DEVICES_SUCCESS
     }

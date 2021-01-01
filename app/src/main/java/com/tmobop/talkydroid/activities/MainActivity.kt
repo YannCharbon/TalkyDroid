@@ -60,6 +60,9 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     private lateinit var userWithMessagesViewModel: UserWithMessagesViewModel
     private lateinit var messagesViewModel: MessageViewModel
 
+    // Locks
+    private var usbPermissionRequestPending = false
+
     //-------------------------------------------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,23 +98,6 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         // Get hardware
         mModRfUartManager = ModRfUartManager(this, this)
 
-        // Set username to hardware
-        mModRfUartManager.companion.userName = intent.getStringExtra(USER_NAME).toString()
-
-        // Check if USB connected
-        when(mModRfUartManager.getDevice()) {
-            NO_DRIVER_AVAILABLE -> {
-                isDeviceConnected = false
-                isDeviceOpen = false
-                Toast.makeText(this, "Device not connected", Toast.LENGTH_SHORT).show()
-                btnScanChannels.setImageResource(R.drawable.ic_baseline_settings_remote_red)
-            }
-            GET_UART_DEVICES_SUCCESS -> {
-                isDeviceConnected = true
-                btnScanChannels.setImageResource(R.drawable.ic_baseline_settings_remote_green)
-            }
-        }
-
         //------------------------------ Get user profil ------------------------------------
         // Get shared preferences
         sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
@@ -120,6 +106,13 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         val userName = sharedPreferences.getString(userNameKey, "unknown")
         val userAvatar = sharedPreferences.getString(userAvatarPathKey, "")
         val userUUID = mModRfUartManager.companion.userUUID
+
+        // Set username to hardware
+        if (userName != null) {
+            mModRfUartManager.companion.userName = userName
+        } else {
+            mModRfUartManager.companion.userName = "unknown"
+        }
 
         //------------------------------ Conversation list ----------------------------------
         // Conversation recycler view
@@ -212,18 +205,29 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         if (SingletonServiceManager.isMyServiceRunning) {
 
             stopService(Intent(this, NotificationService::class.java))
-
-            // Get the hardware manager
-            mModRfUartManager = ModRfUartManager(this, this)
         }
-    }
 
-    //-------------------------------------------------------------------
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
+        // Get the hardware manager
+        mModRfUartManager.changeContext(this, this)
 
-        // Change context back to main activity when returning from conversation activity
-        mModRfUartManager = ModRfUartManager(this, this)
+
+        Toast.makeText(this, "ioiouhku", Toast.LENGTH_SHORT).show()
+
+        // Check if USB connected
+        if(!usbPermissionRequestPending){
+            when(mModRfUartManager.getDevice()) {
+                NO_DRIVER_AVAILABLE -> {
+                    isDeviceConnected = false
+                    isDeviceOpen = false
+                    Toast.makeText(this, "Device not connected", Toast.LENGTH_SHORT).show()
+                    btnScanChannels.setImageResource(R.drawable.ic_baseline_settings_remote_red)
+                }
+                GET_UART_DEVICES_SUCCESS -> {
+                    isDeviceConnected = true
+                    btnScanChannels.setImageResource(R.drawable.ic_baseline_settings_remote_green)
+                }
+            }
+        }
     }
 
     //-------------------------------------------------------------------
@@ -241,7 +245,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     override fun onTextReceived(string: String, senderUUID: String) {
         runOnUiThread {
             if (senderUUID == "") {
-                Toast.makeText(this, "Message received from unknown device. please rescan channel", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Message received from unknown device. Please rescan channel", Toast.LENGTH_SHORT).show()
             }
             else {
                 val message = MessageEntity(
@@ -423,14 +427,17 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         // Toggle the device attached logo to green
         btnScanChannels.setImageResource(R.drawable.ic_baseline_settings_remote_green)
 
-        // Toggle device connected variable
-        isDeviceConnected = true
-
         // Display a toast to inform the user that the device is attached
         runOnUiThread {
             Toast.makeText(this, "Device attached", Toast.LENGTH_SHORT).show()
-            when (mModRfUartManager.getDevice()) {
-                NO_DRIVER_AVAILABLE -> Toast.makeText(this, "The driver is not available", Toast.LENGTH_SHORT).show()
+            if(!isDeviceConnected){
+                // Toggle device connected variable
+                isDeviceConnected = true
+
+                usbPermissionRequestPending = true
+                when (mModRfUartManager.getDevice()) {
+                    NO_DRIVER_AVAILABLE -> Toast.makeText(this, "The driver is not available", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -470,9 +477,6 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     //-------------------------------------------------------------------
     override fun onDeviceOpened() {
 
-        // Toggle device connected variable
-        isDeviceOpen = true
-
         runOnUiThread{
             // Anti rebound
             if (!isDeviceOpen) {
@@ -483,8 +487,10 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 // Toggle device connected variable
                 isDeviceOpen = true
 
-                // Wait 1s before launching the scan to be sure everything is ok (anti-rebound)
+                // Wait 2s before launching the scan to be sure everything is ok (anti-rebound)
                 sleep(2000)
+
+                usbPermissionRequestPending = false
 
                 // Scan channels
                 scanChannels()
@@ -494,6 +500,10 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
     //-------------------------------------------------------------------
     override fun onDeviceOpenError() {
+        // Toggle device connected variable
+        isDeviceConnected = false
+        isDeviceOpen = false
+
         runOnUiThread {
             Toast.makeText(this, "Cannot open Device : permission denied", Toast.LENGTH_SHORT).show()
             alertDialog.dismiss()

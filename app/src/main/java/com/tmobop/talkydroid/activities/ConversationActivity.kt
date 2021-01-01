@@ -332,8 +332,6 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         btnBackImageButton.setOnClickListener {
             mainActivity = Intent(this, MainActivity::class.java)
-            mainActivity.putExtra(USER_UUID, userUUID)
-            mainActivity.putExtra(USER_NAME, userName)
             startActivity(mainActivity)
             finish()
         }
@@ -463,7 +461,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         }
 
         // Get the hardware manager
-        mModRfUartManager = ModRfUartManager(this, this)
+        mModRfUartManager.changeContext(this, this)
     }
 
     //--------------------------------------- Camera -----------------------------------------------
@@ -498,6 +496,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             // Permission denied -> Nothing to do since we already prompt the user for permissions
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_LONG).show()
         }
         else { // Permission granted -> Share location
 
@@ -515,7 +514,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     val longitude = it.longitude.toString()
 
                     // Display the coords
-                    //Toast.makeText(this, "Latitude = $latitude, Longitude = $longitude", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Latitude = $latitude, Longitude = $longitude", Toast.LENGTH_LONG).show()
 
                     // Create the message to send
                     val message = MessageEntity(

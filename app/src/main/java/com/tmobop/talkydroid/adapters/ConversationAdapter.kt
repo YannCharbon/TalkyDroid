@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.LatLng
@@ -142,12 +143,20 @@ class ConversationAdapter(private val context: Context, private val messageList:
 
         override fun onMapReady(googleMap: GoogleMap?) {
             MapsInitializer.initialize(context.applicationContext)
-            map = googleMap ?: return
+            if (googleMap != null) {
+                map = googleMap
+            } else {
+                Toast.makeText(context, "Map is null", Toast.LENGTH_LONG).show()
+                return
+            }
             setLocation()
         }
 
         private fun setLocation() {
-            if (!::map.isInitialized) return
+            if (!::map.isInitialized){
+                Toast.makeText(context, "Map is not initialized", Toast.LENGTH_LONG).show()
+                return
+            }
             with(map) {
                 moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 11f))
                 addMarker(MarkerOptions().position(latLng))
