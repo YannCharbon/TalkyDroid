@@ -331,6 +331,12 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         btnBackImageButton = findViewById(R.id.conversation_toolbar_back_arrow_imageButton)
 
         btnBackImageButton.setOnClickListener {
+            // start the notification service if it not already running
+            if (!SingletonServiceManager.isMyServiceRunning) {
+                val serviceIntent = Intent(this, NotificationService::class.java)
+                startService(serviceIntent)
+            }
+            
             mainActivity = Intent(this, MainActivity::class.java)
             startActivity(mainActivity)
             finish()
@@ -440,16 +446,6 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         }
     }
 
-    //-------------------------------------- onStop ------------------------------------------------
-    override fun onStop() {
-        super.onStop()
-
-        // start the notification service if it not already running
-        if (!SingletonServiceManager.isMyServiceRunning) {
-            val serviceIntent = Intent(this, NotificationService::class.java)
-            startService(serviceIntent)
-        }
-    }
 
     //-------------------------------------- onResume ----------------------------------------------
     override fun onResume() {
