@@ -1,31 +1,31 @@
 package com.tmobop.talkydroid.activities
 
-import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Color
-import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.tmobop.talkydroid.R
 import com.tmobop.talkydroid.adapters.ConversationListAdapter
-import com.tmobop.talkydroid.classes.*
+import com.tmobop.talkydroid.classes.GET_UART_DEVICES_SUCCESS
+import com.tmobop.talkydroid.classes.MessageType
+import com.tmobop.talkydroid.classes.ModRfUartManager
+import com.tmobop.talkydroid.classes.NO_DRIVER_AVAILABLE
 import com.tmobop.talkydroid.services.NotificationService
+import com.tmobop.talkydroid.services.SingletonServiceManager
 import com.tmobop.talkydroid.storage.*
 import kotlinx.coroutines.launch
 import java.lang.Thread.sleep
@@ -37,29 +37,28 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     private lateinit var conversationListAdapter: ConversationListAdapter
     private lateinit var conversationListRecyclerView: RecyclerView
 
+    // Shared preferences
+    private lateinit var sharedPreferences: SharedPreferences
+    private val userINFO : String = "user_information"
+    private val userNameKey = "userNameKey"
+    private val userAvatarPathKey = "userAvatarPathKey"
+
     // Hardware variables
     lateinit var mModRfUartManager: ModRfUartManager
     private lateinit var dialogViewConfigUsb: View
     private lateinit var timerScanningError: CountDownTimer
     private var channelScanIsRunning = false
     private lateinit var alertDialog: AlertDialog
-    private lateinit var progressBar: ProgressBar
-    var connectedDeviceInfoText = ""
     private var isDeviceConnected: Boolean = false
     private var isDeviceOpen: Boolean = false
-    private var isDeviceError: Boolean = false
 
     // Buttons variables
-    lateinit var btnSettings: ImageButton
-    lateinit var btnScanChannels: ImageButton
+    private lateinit var btnSettings: ImageButton
+    private lateinit var btnScanChannels: ImageButton
 
     // ViewModel variables
+    private lateinit var userWithMessagesViewModel: UserWithMessagesViewModel
     private lateinit var messagesViewModel: MessageViewModel
-
-    // Notifications variables
-    private var notificationManager: NotificationManager? = null
-    private val notificationId = 101
-
 
     //-------------------------------------------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +69,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         btnSettings = findViewById(R.id.toolbar_main_imageView_settings)
         btnSettings.setOnClickListener{
             val settingsIntent = Intent(this, SettingsActivity::class.java)
+
             startActivity(settingsIntent)
         }
 
@@ -92,7 +92,10 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         }
 
         //-------------------------------ModRfUartManager -------------------------------
+        // Get hardware
         mModRfUartManager = ModRfUartManager(this, this)
+
+        // Set username to hardware
         mModRfUartManager.companion.userName = intent.getStringExtra(USER_NAME).toString()
 
         // Check if USB connected
@@ -109,8 +112,13 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
             }
         }
 
-        //------------------------- get userName and userUUID -------------------------------
-        val userName = intent.getStringExtra(USER_NAME).toString()
+        //------------------------------ Get user profil ------------------------------------
+        // Get shared preferences
+        sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
+
+        // Get values
+        val userName = sharedPreferences.getString(userNameKey, "unknown")
+        val userAvatar = sharedPreferences.getString(userAvatarPathKey, "")
         val userUUID = mModRfUartManager.companion.userUUID
 
         //------------------------------ Conversation list ----------------------------------
@@ -149,11 +157,11 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         // Set all users to be offline
         lifecycleScope.launch {
-            userWithMessagesViewModel!!.setAllUsersOffline()
+            userWithMessagesViewModel.setAllUsersOffline()
         }
 
         // Display users from database
-        userWithMessagesViewModel!!.getAllUsersWithMessages().observe(this, { usersWithMessages ->
+        userWithMessagesViewModel.getAllUsersWithMessages().observe(this, { usersWithMessages ->
 
             // Remove the application user from the list since we don't want to show it in the list
             //val idxApplicationUser = usersWithMessages.indexOfFirst{UserWithMessages().userEntity!!.userId == UUID.fromString(userUUID)}
@@ -167,42 +175,14 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         // Add the user to database if he is new
         lifecycleScope.launch {
-            val applicationUser = UserEntity(UUID.fromString(userUUID), userName, "", online = true)
-            userWithMessagesViewModel!!.insertUser(applicationUser)      // If the user already exists, this line is ignored
+            val applicationUser = UserEntity(UUID.fromString(userUUID),
+                userName.toString(), userAvatar.toString(), online = true)
+            userWithMessagesViewModel.insertUser(applicationUser)      // If the user already exists, this line is ignored
         }
-
-        //-------------------------------- Notifications ------------------------------------
-        //notificationManager =
-        //    getSystemService(
-        //        Context.NOTIFICATION_SERVICE
-        //    ) as NotificationManager
-
-        //createNotificationChannel(
-        //    CHANNEL_ID,
-        //    "TalkyDroid_channel",
-        //    "TalkyDroid_description"
-        //)
 
         // Stop the notification service if it is running
-        if (isMyServiceRunning(NotificationService::class.java)) {
+        if (SingletonServiceManager.isMyServiceRunning) {
             stopService(Intent(this, NotificationService::class.java))
-        }
-
-        //------------------------------ Floating button --------------------------------
-        val floatingButton = findViewById<FloatingActionButton>(R.id.add_conversation_floating_button)
-
-        floatingButton.setOnClickListener{
-            // TODO -> Remove
-            //mModRfUartManager.writeText("coucou", "289f909c-8263-4ea9-894f-868a067924df")
-
-            // Notifications
-            //sendNotification(content = "salut", senderName = "Paul")
-
-            // New conversation
-            //val user1 = UserEntity(UUID.randomUUID(), "Michel", "")
-            //lifecycleScope.launch{
-            //    userWithMessagesViewModel.insertUser(user1)
-            //}
         }
     }
 
@@ -214,41 +194,31 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     }
 
     //-------------------------------------------------------------------
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        when (item.itemId) {
-            R.id.action_settings -> {
+    override fun onPause() {
+        super.onPause()
 
-
-                return true
-            }
-            R.id.action_modrf_config -> {
-
-
-                return true
-            }
-            else -> return super.onOptionsItemSelected(item)
+        // Start the notification service
+        if (!SingletonServiceManager.isMyServiceRunning) {
+            val serviceIntent = Intent(this, NotificationService::class.java)
+            startService(serviceIntent)
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        val serviceIntent = Intent(this, NotificationService::class.java)
-        startService(serviceIntent)
-    }
-
+    //-------------------------------------------------------------------
     override fun onResume() {
         super.onResume()
 
-        // Stop the service
-        stopService(Intent(this, NotificationService::class.java))
+        // Stop the service if it is running
+        if (SingletonServiceManager.isMyServiceRunning) {
 
-        // Get the hardware manager
-        mModRfUartManager = ModRfUartManager(this, this)
+            stopService(Intent(this, NotificationService::class.java))
+
+            // Get the hardware manager
+            mModRfUartManager = ModRfUartManager(this, this)
+        }
     }
 
+    //-------------------------------------------------------------------
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -264,9 +234,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         const val USER_UUID = "user_uuid"
         const val USER_NAME = "user_name"
         const val RECEIVER_UUID = "receiver_uuid"
-        const val CHANNEL_ID = "channel_id"
         const val KEY_TEXT_REPLY = "key_text_reply"
-        var userWithMessagesViewModel: UserWithMessagesViewModel? = null
     }
 
     //-------------------------------------------------------------------
@@ -276,12 +244,6 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 Toast.makeText(this, "Message received from unknown device. please rescan channel", Toast.LENGTH_SHORT).show()
             }
             else {
-                Toast.makeText(
-                    this,
-                    "Received data from $senderUUID : $string",
-                    Toast.LENGTH_SHORT
-                ).show()
-
                 val message = MessageEntity(
                     messageId = null,
                     senderId = UUID.fromString(senderUUID),
@@ -296,6 +258,35 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     // Insert message to database
                     messagesViewModel.insertMessage(message)
                 }
+
+                // Display a toast to inform the user that there is new messages
+                Toast.makeText(
+                    this,
+                    "New messages received",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                // Get the userName
+                //userWithMessagesViewModel.getAllUsersWithMessages().observe(this,
+                //    { usersWithMessage ->
+                //        // Get the sender entity
+                //        val senderEntity = usersWithMessage.findLast { userWithMessages ->
+                //            userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                //        }
+//
+                //        // Check if sender entity is in database
+                //        if (senderEntity != null) {
+                //            // Get the sender name
+                //            val senderName = senderEntity.userEntity!!.userName
+//
+                //            Toast.makeText(
+                //                this,
+                //                "Received message from $senderName : $string",
+                //                Toast.LENGTH_SHORT
+                //            ).show()
+                //        }
+                //    }
+                //)
             }
         }
     }
@@ -303,11 +294,61 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
     //-------------------------------------------------------------------
     override fun onLocationReceived(location: String, senderUUID: String) {
         runOnUiThread {
-            Toast.makeText(
-                this,
-                "Received location from $senderUUID : $location",
-                Toast.LENGTH_SHORT
-            ).show()
+            if (senderUUID == "") {
+                Toast.makeText(this, "Message received from unknown device. please rescan channel", Toast.LENGTH_SHORT).show()
+            }
+            else {
+                val message = MessageEntity(
+                    messageId = null,
+                    senderId = UUID.fromString(senderUUID),
+                    receiverId = UUID.fromString(mModRfUartManager.companion.userUUID),
+                    content = location,
+                    time = Calendar.getInstance().timeInMillis,
+                    messageType = MessageType.LOCATION
+                )
+
+                // Insert message to database
+                lifecycleScope.launch {
+                    // Insert message to database
+                    messagesViewModel.insertMessage(message)
+                }
+
+                // Display a toast to inform the user that there is new messages
+                Toast.makeText(
+                    this,
+                    "New messages received",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                // Get the userName
+                //userWithMessagesViewModel.getAllUsersWithMessages().observe(this,
+                //    { usersWithMessage ->
+                //        // Get the sender entity
+                //        val senderEntity = usersWithMessage.findLast { userWithMessages ->
+                //            userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                //        }
+//
+                //        // Check if sender entity is in database
+                //        if (senderEntity != null) {
+                //            // Get the sender name
+                //            val senderName = senderEntity.userEntity!!.userName
+//
+                //            // Get coords
+                //            val cords = location.split(',')
+                //            val latitude = cords[0]
+                //            val longitude = cords[1]
+//
+                //            Toast.makeText(
+                //                this,
+                //                "Received location from $senderName : \n" +
+                //                        "latitude = $latitude\n" +
+                //                        "longitude = $longitude",
+                //                Toast.LENGTH_SHORT
+                //            ).show()
+                //        }
+                //    }
+                //)
+            }
         }
     }
 
@@ -352,8 +393,8 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     "",
                     true
                 )
-                userWithMessagesViewModel!!.insertUser(newConversation)
-                userWithMessagesViewModel!!.setUserOnline(UUID.fromString(device.userUUID))
+                userWithMessagesViewModel.insertUser(newConversation)
+                userWithMessagesViewModel.setUserOnline(UUID.fromString(device.userUUID))
             }
         }
     }
@@ -371,8 +412,8 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 "",
                 true
             )
-            userWithMessagesViewModel!!.insertUser(newConversation)
-            userWithMessagesViewModel!!.setUserOnline(UUID.fromString(device.userUUID))
+            userWithMessagesViewModel.insertUser(newConversation)
+            userWithMessagesViewModel.setUserOnline(UUID.fromString(device.userUUID))
         }
     }
 
@@ -406,6 +447,10 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         // Display a toast to inform the user that the device is detached
         runOnUiThread {
+            lifecycleScope.launch {
+                userWithMessagesViewModel.setAllUsersOffline()
+            }
+
             if (channelScanIsRunning) {
                 Toast.makeText(
                     this,
@@ -424,6 +469,9 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
     //-------------------------------------------------------------------
     override fun onDeviceOpened() {
+
+        // Toggle device connected variable
+        isDeviceOpen = true
 
         runOnUiThread{
             // Anti rebound
@@ -446,25 +494,10 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
     //-------------------------------------------------------------------
     override fun onDeviceOpenError() {
-
-        // Toggle device connected variable
-        isDeviceOpen = true
-
         runOnUiThread {
             Toast.makeText(this, "Cannot open Device : permission denied", Toast.LENGTH_SHORT).show()
             alertDialog.dismiss()
         }
-    }
-
-    //-------------------------------------------------------------------
-    private fun isMyServiceRunning(serviceClass : Class<*> ) : Boolean{
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.name == service.service.className) {
-                return true
-            }
-        }
-        return false
     }
 
     //-------------------------------------------------------------------
@@ -516,127 +549,4 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
             }
         }
     }
-
-    //-------------------------------------------------------------------
-    //private fun createNotificationChannel(id: String, name: String, description: String) {
-//
-    //    val importance = NotificationManager.IMPORTANCE_HIGH
-    //    val channel = NotificationChannel(id, name, importance)
-//
-    //    channel.description = description
-    //    channel.enableLights(true)
-    //    channel.lightColor = Color.BLUE
-    //    channel.enableVibration(true)
-    //    channel.vibrationPattern =
-    //        longArrayOf(100, 200, 300, 400, 500, 400, 300, 200, 400)
-//
-    //    notificationManager?.createNotificationChannel(channel)
-    //}
-
-    //-------------------------------------------------------------------
-    //private fun sendNotification(content: String, senderName: String) {
-    //    val replyLabel = "Enter your reply here"
-    //    val remoteInput = RemoteInput.Builder(KEY_TEXT_REPLY)
-    //        .setLabel(replyLabel)
-    //        .build()
-//
-    //    val resultIntent = Intent(this, MainActivity::class.java)
-//
-    //    val resultPendingIntent = PendingIntent.getActivity(
-    //        this,
-    //        0,
-    //        resultIntent,
-    //        PendingIntent.FLAG_UPDATE_CURRENT
-    //    )
-//
-    //    val icon = Icon.createWithResource(
-    //        this@MainActivity,
-    //        R.drawable.ic_baseline_send
-    //    )
-//
-    //    val replyAction = Notification.Action.Builder(
-    //        icon,
-    //        "Reply", resultPendingIntent
-    //    )
-    //        .addRemoteInput(remoteInput)
-    //        .build()
-//
-    //    val newMessageNotification = Notification.Builder(this, CHANNEL_ID)
-    //        .setColor(
-    //            ContextCompat.getColor(
-    //                this,
-    //                R.color.colorNotification
-    //            )
-    //        )
-    //        .setSmallIcon(R.drawable.ic_walkie_talkie)
-    //        .setContentTitle(senderName)
-    //        .setContentText(content)
-    //        .addAction(replyAction).build()
-//
-    //    val notificationManager = getSystemService(
-    //        Context.NOTIFICATION_SERVICE
-    //    ) as NotificationManager
-//
-    //    notificationManager.notify(
-    //        notificationId,
-    //        newMessageNotification
-    //    )
-    //}
-
-    //-------------------------------------------------------------------
-    //private fun handleNotificationIntent() {
-//
-    //    val intent = this.intent
-//
-    //    val remoteInput = RemoteInput.getResultsFromIntent(intent)
-//
-    //    if (remoteInput != null) {
-//
-    //        val inputString = remoteInput.getCharSequence(
-    //            KEY_TEXT_REPLY
-    //        ).toString()
-//
-//
-    //        Toast.makeText(this, inputString, Toast.LENGTH_LONG).show()
-//
-    //        lateinit var repliedNotification: Notification
-//
-    //        runOnUiThread {
-    //            // Test if hardware connected
-    //            when (mModRfUartManager.getDevice()) {
-//
-    //                // If Hardware connected
-    //                GET_UART_DEVICES_SUCCESS -> {
-    //                    // TODO --> Send message to Hardware
-    //                    // TODO --> Add msg sent to database
-    //                    repliedNotification = Notification.Builder(this, CHANNEL_ID)
-    //                        .setSmallIcon(
-    //                            android.R.drawable.ic_dialog_info
-    //                        )
-    //                        .setContentText("Reply sent")
-    //                        .build()
-    //                }
-//
-    //                // else
-    //                else -> {
-    //                    // Display a error message
-    //                    repliedNotification = Notification.Builder(this, CHANNEL_ID)
-    //                        .setColor(
-    //                            ContextCompat.getColor(
-    //                                this,
-    //                                R.color.red
-    //                            )
-    //                        )
-    //                        .setSmallIcon(
-    //                            android.R.drawable.stat_notify_error
-    //                        )
-    //                        .setContentText("Reply cannot be sent (Hardware not connected)")
-    //                        .build()
-    //                }
-    //            }
-    //        }
-//
-    //        notificationManager?.notify(notificationId, repliedNotification)
-    //    }
-    //}
 }

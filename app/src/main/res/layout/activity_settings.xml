@@ -11,6 +11,52 @@
         android:background="@drawable/ic_baseline_relativelayout_border"
         android:padding="10dp">
 
+        <TextView
+            android:id="@+id/settings_text_user_profil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="User profil"
+
+            />
+
+        <LinearLayout
+            android:id="@+id/settings_linearLayout_Button_change_user_profil"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/settings_text_user_profil"
+            android:orientation="horizontal"
+            android:gravity="left"
+            android:clickable="true">
+
+            <ImageView
+                android:id="@+id/settings_imageView_userAvatar"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginHorizontal="10dp"
+                android:src="@drawable/ic_baseline_unknown_user" />
+
+            <TextView
+                android:id="@+id/settings_textView_username"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:background="@null"
+                android:text="@string/user_name"
+                android:textSize="18sp"
+                android:layout_gravity="center_vertical"
+                android:textAppearance="@android:style/TextAppearance.Material.Body2"/>
+
+         </LinearLayout>
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/ic_baseline_relativelayout_border"
+        android:padding="10dp">
+
     <TextView
         android:id="@+id/settings_text_database"
         android:layout_width="match_parent"
@@ -29,7 +75,6 @@
             android:gravity="center">
 
             <ImageView
-                android:id="@+id/imageView"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginHorizontal="10dp"

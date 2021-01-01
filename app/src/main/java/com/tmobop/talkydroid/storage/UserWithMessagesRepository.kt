@@ -1,7 +1,6 @@
 package com.tmobop.talkydroid.storage
 
 import androidx.lifecycle.LiveData
-import androidx.room.Query
 import java.util.*
 
 class UserWithMessagesRepository(private val userWithMessagesDao: UserWithMessagesDao) {
@@ -20,6 +19,14 @@ class UserWithMessagesRepository(private val userWithMessagesDao: UserWithMessag
 
     suspend fun setUserOnline(id: UUID) {
         userWithMessagesDao.setUserOnline(id)
+    }
+
+    suspend fun deleteAllMessagesInConversation(senderId: UUID) {
+        userWithMessagesDao.deleteAllMessagesInConversation(senderId)
+    }
+
+    suspend fun setUserAvatar(id: UUID, avatarPath: String) {
+        userWithMessagesDao.setUserAvatar(id, avatarPath)
     }
 
     fun exists(id: UUID): LiveData<Boolean> {

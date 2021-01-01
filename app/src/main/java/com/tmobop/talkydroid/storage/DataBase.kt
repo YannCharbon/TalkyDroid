@@ -144,6 +144,9 @@ interface UserWithMessagesDao {
     @Query("UPDATE user SET online = 1 WHERE user_id = :id")
     suspend fun setUserOnline(id: UUID)
 
+    @Query("UPDATE user SET avatar = :avatarPath WHERE user_id = :id")
+    suspend fun setUserAvatar(id: UUID, avatarPath: String)
+
     @Query("SELECT * FROM message")
     fun getAllMessages(): LiveData<List<MessageEntity>>
 
@@ -157,6 +160,9 @@ interface UserWithMessagesDao {
 
     @Query("SELECT * FROM message WHERE sender_id = :senderId AND receiver_id = :receiverId")
     fun getMessagesFromUserIds(senderId: UUID, receiverId: UUID): LiveData<List<MessageEntity?>?>
+
+    @Query("DELETE FROM message WHERE sender_id = :senderId OR receiver_id = :senderId")
+    suspend fun deleteAllMessagesInConversation(senderId: UUID)
 }
 
 //---------------------

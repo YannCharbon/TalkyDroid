@@ -7,57 +7,70 @@ import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
-import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.lifecycleScope
 import com.tmobop.talkydroid.R
 import com.tmobop.talkydroid.activities.MainActivity
 import com.tmobop.talkydroid.classes.GET_UART_DEVICES_SUCCESS
+import com.tmobop.talkydroid.classes.MessageType
 import com.tmobop.talkydroid.classes.ModRfUartManager
-import com.tmobop.talkydroid.storage.UserWithMessagesViewModel
+import com.tmobop.talkydroid.storage.*
+import kotlinx.coroutines.*
+import java.lang.Thread.sleep
 import java.util.*
 import kotlin.collections.ArrayList
 
-class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner {
+class NotificationService : LifecycleService(), ModRfUartManager.Listener {
 
     // Notification variables
-    private val channelId = "Notification from Service"
     private var notificationManager: NotificationManager? = null
     private val notificationId = 101
 
     // Hardware variables
     private lateinit var mModRfUartManager: ModRfUartManager
+    private lateinit var receiverUUID: String
+    private var isNotificationSend: Boolean = false
 
     // Database
-    private var userWithMessagesViewModel: UserWithMessagesViewModel? = null
+    private var job = SupervisorJob()
+    private lateinit var coroutineScope: CoroutineScope
+    private lateinit var messagesDao: MessageDao
+    private lateinit var messagesRepository: MessageRepository
+    private lateinit var userWithMessagesDao: UserWithMessagesDao
+    private lateinit var userWithMessagesRepository: UserWithMessagesRepository
 
     //------------------------------------------------------------------------
     override fun onCreate() {
         super.onCreate()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Get the hardware
+            mModRfUartManager = ModRfUartManager(this, this)
+            mModRfUartManager.unregisterUsbReceiver()
+
             // Get the notification service
             notificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
             // Create the notification channel
-            createNotificationChannel(
-                CHANNEL_ID,
-                "TalkyDroid_channel",
-                "TalkyDroid_description"
-            )
+            createNotificationChannel()
         }
     }
 
     //------------------------------------------------------------------------
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
+
+        // Set a variable to detect that the service is running
+        SingletonServiceManager.isMyServiceRunning = true
 
         // Get the database
-        userWithMessagesViewModel = MainActivity.userWithMessagesViewModel
-
-        // Get the hardware
-        mModRfUartManager = ModRfUartManager(this, this)
+        coroutineScope = CoroutineScope(Dispatchers.Main + job)
+        userWithMessagesDao = TalkyDroidDatabase.getDatabase(this, coroutineScope, application.resources).userWithMessagesDao()
+        messagesDao = TalkyDroidDatabase.getDatabase(this, coroutineScope, application.resources).messageDao()
+        userWithMessagesRepository = UserWithMessagesRepository(userWithMessagesDao)
+        messagesRepository = MessageRepository(messagesDao)
 
         // Handle the notification intent
         handleNotificationIntent(intent)
@@ -66,17 +79,29 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
     }
 
     //------------------------------------------------------------------------
-    override fun onBind(p0: Intent?): IBinder? {
+    override fun onBind(intent: Intent): IBinder? {
+        super.onBind(intent)
         return null
     }
 
     //------------------------------------------------------------------------
-    private fun createNotificationChannel(id: String, name: String, description: String) {
+    override fun onDestroy() {
+        super.onDestroy()
+        notificationManager!!.cancel(notificationId);
+        SingletonServiceManager.isMyServiceRunning = false
+    }
+
+    //------------------------------------------------------------------------
+    private fun createNotificationChannel() {
 
         val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel(id, name, importance)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "TalkyDroid_channel",
+            importance
+        )
 
-        channel.description = description
+        channel.description = "TalkyDroid_description"
         channel.enableLights(true)
         channel.lightColor = Color.BLUE
         channel.enableVibration(true)
@@ -95,9 +120,9 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
             .setLabel(replyLabel)
             .build()
 
-        val resultIntent = Intent(this, MainActivity::class.java)
+        val resultIntent = Intent(this, NotificationService::class.java)
 
-        val resultPendingIntent = PendingIntent.getActivity(
+        val resultPendingIntent = PendingIntent.getService(
             this,
             0,
             resultIntent,
@@ -116,7 +141,7 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
             .addRemoteInput(remoteInput)
             .build()
 
-        val newMessageNotification = Notification.Builder(this, MainActivity.CHANNEL_ID)
+        val newMessageNotification = Notification.Builder(this, CHANNEL_ID)
             .setColor(
                 ContextCompat.getColor(
                     this,
@@ -139,7 +164,7 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
     }
 
     //------------------------------------------------------------------------
-    private fun handleNotificationIntent(intent: Intent) {
+    private fun handleNotificationIntent(intent: Intent?) {
 
         val remoteInput = RemoteInput.getResultsFromIntent(intent)
 
@@ -149,9 +174,6 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
                 MainActivity.KEY_TEXT_REPLY
             ).toString()
 
-
-            Toast.makeText(this, inputString, Toast.LENGTH_LONG).show()
-
             lateinit var repliedNotification: Notification
 
             // Test if hardware connected
@@ -159,9 +181,24 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
 
                 // If Hardware connected
                 GET_UART_DEVICES_SUCCESS -> {
-                    // TODO --> Send message to Hardware
-                    // TODO --> Add msg sent to database
-                    repliedNotification = Notification.Builder(this, MainActivity.CHANNEL_ID)
+                    // Create the message to send
+                    val message = MessageEntity(
+                        messageId = null,
+                        senderId = UUID.fromString(mModRfUartManager.companion.userUUID),
+                        receiverId = UUID.fromString(receiverUUID),
+                        content = inputString,
+                        time = Calendar.getInstance().timeInMillis,
+                        messageType = MessageType.TEXT
+                    )
+
+                    // Send message to Hardware
+                    mModRfUartManager.writeText(inputString, receiverUUID)
+
+                    // Push to database
+                    lifecycleScope.launch {
+                        messagesRepository.insertMessage(message)
+                    }
+                    repliedNotification = Notification.Builder(this, CHANNEL_ID)
                         .setSmallIcon(
                             android.R.drawable.ic_dialog_info
                         )
@@ -172,7 +209,7 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
                 // else
                 else -> {
                     // Display a error message
-                    repliedNotification = Notification.Builder(this, MainActivity.CHANNEL_ID)
+                    repliedNotification = Notification.Builder(this, CHANNEL_ID)
                         .setColor(
                             ContextCompat.getColor(
                                 this,
@@ -188,22 +225,10 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
             }
 
             notificationManager?.notify(notificationId, repliedNotification)
+            sleep(1500)
+            notificationManager?.cancel(notificationId)
         }
     }
-
-    //------------------------------------------------------------------------
-    //private fun isAppRunning(context: Context, packageName: String): Boolean {
-    //    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-    //    val procInfos = activityManager.runningAppProcesses
-    //    if (procInfos != null) {
-    //        for (processInfo in procInfos) {
-    //            if (processInfo.processName == packageName) {
-    //                return true
-    //            }
-    //        }
-    //    }
-    //    return false
-    //}
 
     //------------------------------------------------------------------------
     companion object {
@@ -213,56 +238,105 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
 
     //-------------------------------------------------------------------
     override fun onTextReceived(string: String, senderUUID: String) {
+        receiverUUID = senderUUID
+        isNotificationSend = false
+
         if (senderUUID != "") {
+            GlobalScope.launch(Dispatchers.Main) {
+                userWithMessagesRepository.getUsersWithMessages().observe(this@NotificationService,
+                    { usersWithMessage ->
 
-            userWithMessagesViewModel!!.getAllUsersWithMessages().observe(this,
-                { usersWithMessage ->
+                        // Get the sender entity
+                        val senderEntity = usersWithMessage.findLast { userWithMessages ->
+                            userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                        }
 
-                    // Get the sender entity
-                    val senderEntity = usersWithMessage.findLast { userWithMessages ->
-                        userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                        // Check if sender entity is in database
+                        if (senderEntity != null) {
+                            // Get the sender name
+                            val senderName = senderEntity.userEntity!!.userName
+
+                            if (!isNotificationSend) {
+                                isNotificationSend = true
+                                // Send the notification
+                                sendNotification(string, senderName)
+                            }
+                        }
                     }
+                )
 
-                    // Check if sender entity is in database
-                    if (senderEntity != null) {
-                        // Get the sender name
-                        val senderName = senderEntity.userEntity!!.userName
+                lifecycleScope.launch {
+                    val message = MessageEntity(
+                        messageId = null,
+                        senderId = UUID.fromString(senderUUID),
+                        receiverId = UUID.fromString(mModRfUartManager.companion.userUUID),
+                        content = string,
+                        time = Calendar.getInstance().timeInMillis,
+                        messageType = MessageType.TEXT
+                    )
 
-                        // Send the notification
-                        sendNotification(string, senderName)
+                    // Insert message to database
+                    lifecycleScope.launch {
+                        // Insert message to database
+                        messagesRepository.insertMessage(message)
                     }
                 }
-            )
+            }
         }
     }
 
     //-------------------------------------------------------------------
     override fun onLocationReceived(location: String, senderUUID: String) {
+        receiverUUID = senderUUID
+        isNotificationSend = false
 
         if (senderUUID != "") {
+            GlobalScope.launch(Dispatchers.Main) {
+                val message = MessageEntity(
+                    messageId = null,
+                    senderId = UUID.fromString(senderUUID),
+                    receiverId = UUID.fromString(mModRfUartManager.companion.userUUID),
+                    content = location,
+                    time = Calendar.getInstance().timeInMillis,
+                    messageType = MessageType.LOCATION
+                )
 
-            userWithMessagesViewModel!!.getAllUsersWithMessages().observe(this,
-                { usersWithMessage ->
-
-                // Get the sender entity
-                val senderEntity = usersWithMessage.findLast { userWithMessages ->
-                    userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                // Insert message to database
+                lifecycleScope.launch {
+                    // Insert message to database
+                    messagesRepository.insertMessage(message)
                 }
 
-                // Check if sender entity is in database
-                if (senderEntity != null) {
-                    // Get the sender name
-                    val senderName = senderEntity.userEntity!!.userName
+                // Get the userName
+                userWithMessagesRepository.getUsersWithMessages().observe(this@NotificationService,
+                    { usersWithMessage ->
+                        // Get the sender entity
+                        val senderEntity = usersWithMessage.findLast { userWithMessages ->
+                            userWithMessages.userEntity!!.userId == UUID.fromString(senderUUID)
+                        }
 
-                    // Get the coords
-                    val cords = location.split(',')
-                    val latitude = cords[0]
-                    val longitude = cords[1]
+                        // Check if sender entity is in database
+                        if (senderEntity != null) {
+                            // Get the sender name
+                            val senderName = senderEntity.userEntity!!.userName
 
-                    // Send the notification
-                    sendNotification("Latitude = $latitude, Longitude = $longitude", senderName)
-                }
-            })
+                            if (!isNotificationSend) {
+                                isNotificationSend = true
+                                // Get coords
+                                val cords = location.split(',')
+                                val latitude = cords[0]
+                                val longitude = cords[1]
+
+                                // Send the notification
+                                sendNotification(
+                                    "Latitude = $latitude, Longitude = $longitude",
+                                    senderName
+                                )
+                            }
+                        }
+                    }
+                )
+            }
         }
     }
 
@@ -304,9 +378,5 @@ class NotificationService : Service(), ModRfUartManager.Listener, LifecycleOwner
     //-------------------------------------------------------------------
     override fun onDeviceOpenError() {
         return
-    }
-
-    override fun getLifecycle(): Lifecycle {
-        TODO("Not yet implemented")
     }
 }

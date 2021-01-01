@@ -129,7 +129,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == INTENT_GET_USB_PERMISSION) {
                 val granted: Boolean =
-                    intent.getExtras()!!.getBoolean(UsbManager.EXTRA_PERMISSION_GRANTED)
+                    intent.extras!!.getBoolean(UsbManager.EXTRA_PERMISSION_GRANTED)
                 if (granted) // User accepted our USB connection. Try to open the device as a serial port
                 {
                     connection = usbManager!!.openDevice(device)
@@ -213,16 +213,8 @@ class ModRfUartManager(context: Context, listener: Listener) {
         //readThread.join()
     }
 
-    public fun checkUSB() : Int {
-        usbManager = activityContext.getSystemService(Context.USB_SERVICE) as UsbManager
-
-        val usbDevices : MutableMap<String, UsbDevice> = usbManager!!.deviceList
-
-        return if(usbDevices.isEmpty()) {
-            USB_DISCONNECTED
-        } else {
-            USB_CONNECTED
-        }
+    public fun unregisterUsbReceiver() {
+        activityContext.unregisterReceiver(usbReceiver)
     }
 
     public fun getDevice() : Int{

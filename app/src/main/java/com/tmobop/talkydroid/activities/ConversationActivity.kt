@@ -1,7 +1,6 @@
 package com.tmobop.talkydroid.activities
 
 import android.Manifest
-import android.app.ActivityManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -23,22 +22,24 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.squareup.picasso.Picasso
 import com.tmobop.talkydroid.R
 import com.tmobop.talkydroid.activities.MainActivity.Companion.RECEIVER_UUID
 import com.tmobop.talkydroid.activities.MainActivity.Companion.TITLE_TEXT
 import com.tmobop.talkydroid.activities.MainActivity.Companion.USER_NAME
 import com.tmobop.talkydroid.activities.MainActivity.Companion.USER_UUID
 import com.tmobop.talkydroid.adapters.ConversationAdapter
+import com.tmobop.talkydroid.classes.CircleTransformation
 import com.tmobop.talkydroid.classes.MessageType
 import com.tmobop.talkydroid.classes.ModRfUartManager
 import com.tmobop.talkydroid.services.NotificationService
+import com.tmobop.talkydroid.services.SingletonServiceManager
 import com.tmobop.talkydroid.storage.MessageEntity
 import com.tmobop.talkydroid.storage.MessageViewModel
 import com.tmobop.talkydroid.storage.UserEntity
 import com.tmobop.talkydroid.storage.UserWithMessagesViewModel
 import kotlinx.coroutines.launch
 import java.util.*
-import kotlin.collections.List as List1
 
 
 class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
@@ -56,6 +57,8 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     private lateinit var btnSettings: ImageButton
 
     private lateinit var imageAvatarImageView: ImageView
+    private lateinit var imageOnlineImageView: ImageView
+    private lateinit var conversationToolbar: Toolbar
     private lateinit var titleTextView: TextView
 
     private lateinit var conversationAdapter: ConversationAdapter
@@ -71,6 +74,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     private lateinit var userUUID : String
     private lateinit var receiverUUID : String
     private lateinit var userName : String
+    private var isUserOnline: Boolean = false
 
     // Hardware variables
     private lateinit var mModRfUartManager: ModRfUartManager
@@ -85,7 +89,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         userName = intent.getStringExtra(USER_NAME).toString()
 
         //------------------------------------ Notifications ---------------------------------------
-        if (isMyServiceRunning(NotificationService::class.java)) {
+        if (SingletonServiceManager.isMyServiceRunning) {
             stopService(Intent(this, NotificationService::class.java))
         }
 
@@ -121,45 +125,98 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
             conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1)
         })
 
+        // Observe the database to see if user become online or if userAvatar change
+        userWithMessagesViewModel.getAllUsersWithMessages().observe(this, {usersWithMessage ->
+
+            // Get the senderEntity
+            val senderEntity = usersWithMessage.findLast { userWithMessages ->
+                userWithMessages.userEntity!!.userId == UUID.fromString(receiverUUID)
+            }
+
+            // Get the avatar imageView
+            imageAvatarImageView = findViewById(R.id.conversation_toolbar_avatar_imageView)
+
+            // Get the online/offline imageView
+            imageOnlineImageView = findViewById(R.id.conversation_toolbar_online)
+
+            // Get the conversation toolbar
+            conversationToolbar = findViewById(R.id.conversation_toolbar)
+
+            // Set the avatar imageView
+            if (senderEntity != null) {
+                if (senderEntity.userEntity?.avatar == "") {
+                    imageAvatarImageView.setImageResource(R.drawable.ic_baseline_unknown_user)
+                }
+                else {
+                    // Round image
+                    Picasso.get()
+                        .load(Uri.parse(senderEntity.userEntity!!.avatar))
+                        .error(R.drawable.ic_baseline_unknown_user)
+                        .placeholder(R.drawable.ic_baseline_unknown_user)
+                        .transform(CircleTransformation())
+                        .into(imageAvatarImageView)
+                }
+            }
+
+            // Set the online logo
+            if (senderEntity != null) {
+                if (senderEntity.userEntity?.online == true) {
+                    imageOnlineImageView.setImageResource(R.drawable.ic_baseline_online)
+                    btnSendMessage.setBackgroundResource(R.drawable.ic_baseline_send_background)
+                    imageAvatarImageView.alpha = 1F
+                    isUserOnline = true
+                    conversationEditText.isEnabled = true
+                }
+                else {
+                    imageOnlineImageView.setImageResource(R.drawable.ic_baseline_offline)
+                    btnSendMessage.setBackgroundResource(R.drawable.ic_baseline_cannotsend_background)
+                    imageAvatarImageView.alpha = 0.5F
+                    isUserOnline = false
+                    conversationEditText.isEnabled = false
+                }
+            }
+        })
+
         //-------------------- Write text bar ----------------------------
         conversationEditText = findViewById(R.id.conversation_editText)
+
         btnSendMessage = findViewById(R.id.send_message_button)
 
         // Send message button
         btnSendMessage.setOnClickListener {
-            if(conversationEditText.text.isNotEmpty()) {
+            if (isUserOnline) {
+                if (conversationEditText.text.isNotEmpty()) {
+                    val message = MessageEntity(
+                        messageId = null,
+                        senderId = UUID.fromString(userUUID),
+                        receiverId = UUID.fromString(receiverUUID),
+                        content = conversationEditText.text.toString(),
+                        time = Calendar.getInstance().timeInMillis,
+                        messageType = MessageType.TEXT
+                    )
 
-                val message = MessageEntity(
-                    messageId = null,
-                    senderId = UUID.fromString(userUUID),
-                    receiverId = UUID.fromString(receiverUUID),
-                    content = conversationEditText.text.toString(),
-                    time = Calendar.getInstance().timeInMillis,
-                    messageType = MessageType.TEXT
-                )
+                    // Send message to Hardware
+                    mModRfUartManager.writeText(conversationEditText.text.toString(), receiverUUID)
 
-                // TODO --> Send message to Hardware
-                mModRfUartManager.writeText(conversationEditText.text.toString(), receiverUUID)
+                    // Push to database
+                    lifecycleScope.launch {
+                        messagesViewModel.insertMessage(message)
+                    }
 
-                // TODO --> Wait for acknowledge
-
-                // IF --> OK
-
-                lifecycleScope.launch {
-                    messagesViewModel.insertMessage(message)
+                    // Reset the keyboard
+                    resetKeyboard()
+                } else {
+                    Toast.makeText(
+                        applicationContext,
+                        "Message should not be empty",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-
-                // Reset the keyboard
-                resetKeyboard()
-
-                // IF --> NOK
-
-                //
             }
             else {
                 Toast.makeText(
                     applicationContext,
-                    "Message should not be empty",
+                    "The user is offline",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -171,60 +228,68 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         // Open the dialog box to choose the file type
         btnSendFiles.setOnClickListener {
-            val dialogBuilder = AlertDialog.Builder(this)
-            val inflater = this.layoutInflater
-            val dialogView: View = inflater.inflate(R.layout.choose_file_type, null)
-            dialogView.setBackgroundColor(Color.TRANSPARENT)
-            dialogBuilder.setView(dialogView)
-            val alertDialog = dialogBuilder.create()
-            alertDialog.show()
+            if (isUserOnline) {
+                val dialogBuilder = AlertDialog.Builder(this)
+                val inflater = this.layoutInflater
+                val dialogView: View = inflater.inflate(R.layout.choose_file_type, null)
+                dialogView.setBackgroundColor(Color.TRANSPARENT)
+                dialogBuilder.setView(dialogView)
+                val alertDialog = dialogBuilder.create()
+                alertDialog.show()
 
-            //----------------------- Send image ----------------------------
-            btnSendImage = dialogView.findViewById(R.id.send_image_button)
+                //----------------------- Send image ----------------------------
+                btnSendImage = dialogView.findViewById(R.id.send_image_button)
 
-            btnSendImage.setOnClickListener {
-                val gallery = Intent(
-                    Intent.ACTION_PICK,
-                    MediaStore.Images.Media.INTERNAL_CONTENT_URI
-                )
-                startActivityForResult(gallery, PICK_IMAGE_FROM_GALLERY)
-                alertDialog.dismiss()
-            }
-
-            //---------------------- Send location --------------------------
-            btnSendLocation = dialogView.findViewById(R.id.send_location_button)
-
-            btnSendLocation.setOnClickListener {
-                // Check permissions
-                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_DENIED ||
-                    checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    == PackageManager.PERMISSION_DENIED)
-                {
-                    // Permission denied
-                    val permissions = arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
+                btnSendImage.setOnClickListener {
+                    val gallery = Intent(
+                        Intent.ACTION_PICK,
+                        MediaStore.Images.Media.INTERNAL_CONTENT_URI
                     )
-
-                    // Show pop up to request permission
-                    requestPermissions(permissions, PERMISSION_CODE_LOCATION)
-                }
-                else {
-                    // Permission granted
-                    shareLocation()
+                    startActivityForResult(gallery, PICK_IMAGE_FROM_GALLERY)
+                    alertDialog.dismiss()
                 }
 
-                alertDialog.dismiss()
+                //---------------------- Send location --------------------------
+                btnSendLocation = dialogView.findViewById(R.id.send_location_button)
+
+                btnSendLocation.setOnClickListener {
+                    // Check permissions
+                    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_DENIED ||
+                        checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                        == PackageManager.PERMISSION_DENIED
+                    ) {
+                        // Permission denied
+                        val permissions = arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+
+                        // Show pop up to request permission
+                        requestPermissions(permissions, PERMISSION_CODE_LOCATION)
+                    } else {
+                        // Permission granted
+                        shareLocation()
+                    }
+
+                    alertDialog.dismiss()
+                }
+
+                //------------------------ Send files ---------------------------
+                btnSendDocument = dialogView.findViewById(R.id.send_document_button)
+
+                btnSendDocument.setOnClickListener {
+                    // TODO
+                    Toast.makeText(this, "SEND DOCUMENT", Toast.LENGTH_SHORT).show()
+                    alertDialog.dismiss()
+                }
             }
-
-            //------------------------ Send files ---------------------------
-            btnSendDocument = dialogView.findViewById(R.id.send_document_button)
-
-            btnSendDocument.setOnClickListener {
-                // TODO
-                Toast.makeText(this, "SEND DOCUMENT", Toast.LENGTH_SHORT).show()
-                alertDialog.dismiss()
+            else {
+                Toast.makeText(
+                    applicationContext,
+                    "The user is offline",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -233,22 +298,31 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         btnOpenCamera = findViewById(R.id.open_camera_imageButton)
 
         btnOpenCamera.setOnClickListener {
-            if (checkSelfPermission(Manifest.permission.CAMERA)
-                == PackageManager.PERMISSION_DENIED ||
-                checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_DENIED
-            ) {
-                // Permission denied
-                val permission = arrayOf(
-                    Manifest.permission.CAMERA,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
+            if (isUserOnline) {
+                if (checkSelfPermission(Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_DENIED ||
+                    checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_DENIED
+                ) {
+                    // Permission denied
+                    val permission = arrayOf(
+                        Manifest.permission.CAMERA,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
 
-                // Show pop up to request permission
-                requestPermissions(permission, PERMISSION_CODE_CAMERA)
-            } else {
-                // Permission granted
-                openCamera()
+                    // Show pop up to request permission
+                    requestPermissions(permission, PERMISSION_CODE_CAMERA)
+                } else {
+                    // Permission granted
+                    openCamera()
+                }
+            }
+            else {
+                Toast.makeText(
+                    applicationContext,
+                    "The user is offline",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -264,28 +338,25 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
             finish()
         }
 
-        // Avatar image
-        imageAvatarImageView = findViewById(R.id.conversation_toolbar_avatar_imageView)
-        // TODO --> set the image view to  avatar image
-
         // Title edit text
         titleTextView = findViewById(R.id.conversation_toolbar_title_textView)
         titleTextView.text = intent.getStringExtra(TITLE_TEXT)
 
         // Settings button
         btnSettings = findViewById(R.id.conversation_toolbar_settings_button)
-
-        // TODO --> Do something when click on settings button
+        btnSettings.setOnClickListener {
+            showSettingsPopup(btnSettings)
+        }
     }
 
     //---------------------------------------------------------------------
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
 
         if (item.itemId == android.R.id.home) {
-            finish(); // close this activity and return to preview activity (if there is any)
+            finish() // close this activity and return to previous activity (if there is any)
         }
 
-        return super.onOptionsItemSelected(item);
+        return super.onOptionsItemSelected(item)
     }
 
     //---------------------------------------------------------------------
@@ -300,17 +371,6 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
             currentFocus!!.windowToken,
             InputMethodManager.HIDE_NOT_ALWAYS
         )
-    }
-
-    //--------------------------------------------------------------------
-    override fun onResume() {
-        super.onResume()
-
-        // Stop the service
-        stopService(Intent(this, NotificationService::class.java))
-
-        // Get the hardware manager
-        mModRfUartManager = ModRfUartManager(this, this)
     }
 
     //---------------------------------------------------------------------
@@ -333,8 +393,6 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
             // TODO --> Send image with hardware
 
-            // TODO --> Wait acknowledge
-
             // Add message to database
             lifecycleScope.launch {
                 messagesViewModel.insertMessage(message)
@@ -353,21 +411,59 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 messageType = MessageType.IMAGE
             )
 
-            // TODO --> Send image
-
-            // TODO --> Wait acknowledge
+            // TODO --> Send image with hardware
 
             // Add message to database
             lifecycleScope.launch {
                 messagesViewModel.insertMessage(message)
             }
         }
+
+        //------------------------------- Set senderAvatar -----------------------------------------
+        if (resultCode == RESULT_OK && requestCode == SET_SENDER_AVATAR_FROM_GALLERY) {
+
+            imageUriFromGallery = data?.data
+
+            // Add user avatar to gallery
+            lifecycleScope.launch {
+                userWithMessagesViewModel.setUserAvatar(UUID.fromString(receiverUUID), imageUriFromGallery.toString())
+            }
+        }
     }
 
+    //------------------------------------- onPause ------------------------------------------------
+    override fun onPause() {
+        super.onPause()
+
+        // start the notification service if it not already running
+        if (!SingletonServiceManager.isMyServiceRunning) {
+            val serviceIntent = Intent(this, NotificationService::class.java)
+            startService(serviceIntent)
+        }
+    }
+
+    //-------------------------------------- onStop ------------------------------------------------
     override fun onStop() {
         super.onStop()
-        val serviceIntent = Intent(this, NotificationService::class.java)
-        startService(serviceIntent)
+
+        // start the notification service if it not already running
+        if (!SingletonServiceManager.isMyServiceRunning) {
+            val serviceIntent = Intent(this, NotificationService::class.java)
+            startService(serviceIntent)
+        }
+    }
+
+    //-------------------------------------- onResume ----------------------------------------------
+    override fun onResume() {
+        super.onResume()
+
+        // Stop the service if it is running
+        if (SingletonServiceManager.isMyServiceRunning) {
+            stopService(Intent(this, NotificationService::class.java))
+        }
+
+        // Get the hardware manager
+        mModRfUartManager = ModRfUartManager(this, this)
     }
 
     //--------------------------------------- Camera -----------------------------------------------
@@ -474,14 +570,43 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         }
     }
 
-    private fun isMyServiceRunning(serviceClass : Class<*> ) : Boolean{
-        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        for (service in manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.name == service.service.className) {
-                return true
+    //------------------------------------ Settings menu -------------------------------------------
+    private fun showSettingsPopup(view: View) {
+        // Get the popUpMenu
+        val popup = PopupMenu(this, view)
+
+        // Inflate the menu
+        popup.inflate(R.menu.conversation_settings_menu)
+
+        // Set on Item click listener
+        popup.setOnMenuItemClickListener { item: MenuItem? ->
+
+            when (item!!.itemId) {
+
+                // Delete all messages in conversation
+                R.id.conversation_settings_deletaAllMessages -> {
+                    Toast.makeText(this, "All messages deleted", Toast.LENGTH_SHORT).show()
+                    lifecycleScope.launch {
+                        userWithMessagesViewModel.deleteAllMessagesInConversation(
+                            UUID.fromString(
+                                receiverUUID
+                            )
+                        )
+                    }
+                }
+
+                // Set sender avatar
+                R.id.conversation_settings_setSenderAvatar -> {
+                    // Open the gallery
+                    val gallery =
+                        Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+                    startActivityForResult(gallery, SET_SENDER_AVATAR_FROM_GALLERY)
+                }
             }
+            true
         }
-        return false
+
+        popup.show()
     }
 
     //-------------------------------------------------------------------
@@ -490,6 +615,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         const val PERMISSION_CODE_LOCATION = 1001
         const val PICK_IMAGE_FROM_GALLERY = 100
         const val PICK_IMAGE_FROM_CAMERA = 101
+        const val SET_SENDER_AVATAR_FROM_GALLERY = 102
     }
 
     override fun onTextReceived(string: String, senderUUID: String) {
@@ -530,15 +656,15 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     }
 
     override fun onError(customText: String, e: Exception) {
-        TODO("Not yet implemented")
+        return
     }
 
     override fun onDiscoverProgress(currentAddress: Int, totalAddresses: Int) {
-        TODO("Not yet implemented")
+        return
     }
 
     override fun onDiscoverFinished(devicesFoundInChannel: ArrayList<ModRfUartManager.DeviceInChannel>) {
-        TODO("Not yet implemented")
+        return
     }
 
     override fun onDeviceJoinedNetwork(device: ModRfUartManager.DeviceInChannel) {
@@ -554,6 +680,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 online = true
             )
             userWithMessagesViewModel.insertUser(newConversation)
+            userWithMessagesViewModel.setUserOnline(UUID.fromString(device.userUUID))
         }
     }
 
@@ -566,6 +693,10 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     override fun onDeviceDetached() {
         runOnUiThread {
             Toast.makeText(this, "Device detached", Toast.LENGTH_SHORT).show()
+
+            lifecycleScope.launch {
+                userWithMessagesViewModel.setAllUsersOffline()
+            }
         }
     }
 
@@ -577,7 +708,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
     override fun onDeviceOpenError() {
         runOnUiThread {
-            Toast.makeText(this, "Device open error", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Cannot open Device : permission denied", Toast.LENGTH_SHORT).show()
         }
     }
 }

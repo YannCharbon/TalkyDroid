@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/conversation_settings_deletaAllMessages"
+        android:title="Delete all messages"
+        android:icon="@drawable/ic_baseline_restore_from_trash"
+        app:showAsAction="collapseActionView"/>
+
+    <item
+        android:id="@+id/conversation_settings_setSenderAvatar"
+        android:title="Set sender avatar"
+        android:icon="@drawable/ic_baseline_unknown_user"
+        app:showAsAction="collapseActionView"/>
+</menu>

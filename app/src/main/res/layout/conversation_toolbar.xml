@@ -2,6 +2,7 @@
 <Toolbar
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/conversation_toolbar"
     android:layout_height="60dp"
     android:layout_width="match_parent"
     android:background="@color/backgroundLauncherColor"
@@ -48,8 +49,17 @@
             android:textSize="18sp"
             android:textStyle="bold"
             android:text="@string/unknown">
-
         </TextView>
+
+        <ImageButton
+            android:id="@+id/conversation_toolbar_online"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:layout_toLeftOf="@+id/conversation_toolbar_settings_button"
+            android:background="@null"
+            android:src="@drawable/ic_baseline_offline">
+        </ImageButton>
 
         <ImageButton
             android:id="@+id/conversation_toolbar_settings_button"
@@ -60,7 +70,6 @@
             android:layout_marginEnd="5dp"
             android:background="@null"
             android:src="@drawable/ic_baseline_settings">
-
         </ImageButton>
 
     </RelativeLayout>

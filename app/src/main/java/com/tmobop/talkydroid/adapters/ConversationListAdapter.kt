@@ -1,15 +1,18 @@
 package com.tmobop.talkydroid.adapters
 
 import android.graphics.Color
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
+import com.squareup.picasso.Picasso
 import com.tmobop.talkydroid.R
+import com.tmobop.talkydroid.classes.CircleTransformation
+import com.tmobop.talkydroid.classes.MessageType
 import com.tmobop.talkydroid.storage.UserWithMessages
 import java.text.SimpleDateFormat
 import java.util.*
@@ -70,14 +73,37 @@ class ConversationListAdapter(
         holder.textViewConversationName.text = conversationList[position].userEntity!!.userName
 
         // TODO -> Change with the userAvatar
-        holder.imageViewConversationAvatar.setImageResource(R.drawable.ic_baseline_unknown_user)
+        if (conversationList[position].userEntity?.avatar == "") {
+            holder.imageViewConversationAvatar.setImageResource(R.drawable.ic_baseline_unknown_user)
+        }
+        else {
+            // Round image
+            Picasso.get()
+                .load(Uri.parse(conversationList[position].userEntity!!.avatar))
+                .error(R.drawable.ic_baseline_unknown_user)
+                .placeholder(R.drawable.ic_baseline_unknown_user)
+                .transform(CircleTransformation())
+                .into(holder.imageViewConversationAvatar)
+        }
 
         // Check if there is messages in the conversation
         if (conversationList[position].userMessageEntities!!.isNotEmpty()) {
 
-            // Set the description with the last message
-            holder.textViewConversationDescription.text =
-                conversationList[position].userMessageEntities!!.last().content
+            val lastMessage = conversationList[position].userMessageEntities!!.last()
+
+            when(lastMessage.messageType) {
+                MessageType.LOCATION -> {
+                    val cords = conversationList[position].userMessageEntities!!.last().content.split(',')
+                    val latitude = cords[0]
+                    val longitude = cords[1]
+                    holder.textViewConversationDescription.text = "Latitude : $latitude, Longitude : $longitude"
+                }
+                MessageType.TEXT -> {
+                // Set the description with the last message
+                holder.textViewConversationDescription.text =
+                    conversationList[position].userMessageEntities!!.last().content
+                }
+            }
 
             // Set the time with the last message time
             holder.textViewConversationTime.text =
@@ -86,7 +112,6 @@ class ConversationListAdapter(
 
         // If no message
         else {
-
             // Set the description with a message
             holder.textViewConversationDescription.text = "No message to display..."
 
@@ -100,12 +125,14 @@ class ConversationListAdapter(
         if (conversationList[position].userEntity!!.online) {
             // Make background white
             holder.constraintLayoutConversation.setBackgroundColor(Color.WHITE)
-            holder.imageViewOnlineSymbole.setImageResource(R.drawable.ic_baseline_online)
+            holder.imageViewConversationAvatar.alpha = 1F // Transparency
+            holder.imageViewOnlineSymbol.setImageResource(R.drawable.ic_baseline_online)
         }
         else {
             // Make background gray
-            holder.constraintLayoutConversation.setBackgroundColor(Color.parseColor("#AABABABA"))
-            holder.imageViewOnlineSymbole.setImageResource(R.drawable.ic_baseline_offline)
+            holder.constraintLayoutConversation.setBackgroundColor(Color.parseColor("#FFADADAD"))
+            holder.imageViewConversationAvatar.alpha = 0.5F // Transparency
+            holder.imageViewOnlineSymbol.setImageResource(R.drawable.ic_baseline_offline)
         }
 
         // Activate on click listener
@@ -124,7 +151,7 @@ class ConversationListAdapter(
         val imageViewConversationAvatar = view.findViewById<ImageView>(R.id.conversation_avatar)!!
         val textViewConversationDescription = view.findViewById<TextView>(R.id.conversation_description)!!
         val constraintLayoutConversation = view.findViewById<ConstraintLayout>(R.id.conversation_selector_constraint_layout)!!
-        val imageViewOnlineSymbole = view.findViewById<ImageView>(R.id.conversation_online_symbole)
+        val imageViewOnlineSymbol = view.findViewById<ImageView>(R.id.conversation_online_symbole)!!
     }
 
     //------------------------------------------

@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
-import androidx.room.Query
 import java.util.*
 
 open class UserWithMessagesViewModel(application: Application) : AndroidViewModel(application) {
@@ -36,6 +35,14 @@ open class UserWithMessagesViewModel(application: Application) : AndroidViewMode
 
     suspend fun setUserOnline(id: UUID) {
         repository.setUserOnline(id)
+    }
+
+    suspend fun setUserAvatar(id: UUID, avatarPath: String) {
+        repository.setUserAvatar(id, avatarPath)
+    }
+
+    suspend fun deleteAllMessagesInConversation(senderId: UUID) {
+        repository.deleteAllMessagesInConversation(senderId)
     }
 
     fun exists(id: UUID): LiveData<Boolean> {
