@@ -118,6 +118,9 @@ interface MessageDao {
     @Query("SELECT * FROM message")
     fun getAllMessages(): LiveData<List<MessageEntity>>
 
+    @Query("SELECT * FROM message WHERE sender_id = :senderId OR receiver_id = :senderId")
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>>
+
     @Query("SELECT * FROM message ORDER BY time DESC LIMIT 1" )
     fun getLastMessage(): LiveData<MessageEntity>
 
@@ -135,6 +138,9 @@ interface UserWithMessagesDao {
     @Query("DELETE FROM user")
     suspend fun deleteAllUsers()
 
+    @Query("DELETE FROM user WHERE user_id = :id")
+    suspend fun deleteUserFromUserId(id: UUID)
+
     @Query("SELECT EXISTS (SELECT 1 FROM user WHERE user_id = :id)")
     fun exists(id: UUID): LiveData<Boolean>
 
@@ -144,11 +150,17 @@ interface UserWithMessagesDao {
     @Query("UPDATE user SET online = 1 WHERE user_id = :id")
     suspend fun setUserOnline(id: UUID)
 
+    @Query("UPDATE user SET user_name = :userName WHERE user_id = :id")
+    suspend fun setUserName(id: UUID, userName: String)
+
     @Query("UPDATE user SET avatar = :avatarPath WHERE user_id = :id")
     suspend fun setUserAvatar(id: UUID, avatarPath: String)
 
     @Query("SELECT * FROM message")
     fun getAllMessages(): LiveData<List<MessageEntity>>
+
+    @Query("SELECT * FROM message WHERE sender_id = :senderId OR receiver_id = :senderId")
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>>
 
     @Transaction
     @Query("SELECT * FROM user")

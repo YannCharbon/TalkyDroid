@@ -3,6 +3,7 @@ package com.tmobop.talkydroid.activities
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -98,6 +99,23 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         // Get hardware
         mModRfUartManager = ModRfUartManager(this, this)
 
+        //------------------------------------------------------------------------------
+
+        if ((checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE )
+                    == PackageManager.PERMISSION_DENIED) ||
+            (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_DENIED)) {
+
+            // Permission denied
+            val permissions = arrayOf(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+
+            // Show pop up to request permission
+            requestPermissions(permissions, PERMISSION_CODE_GALLERY)
+        }
+
         //------------------------------ Get user profil ------------------------------------
         // Get shared preferences
         sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
@@ -130,7 +148,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
             )
         )
 
-        conversationListAdapter = ConversationListAdapter(mutableListOf())
+        conversationListAdapter = ConversationListAdapter(this, mutableListOf())
         conversationListRecyclerView.adapter = conversationListAdapter
 
         // on item click listener -> Start conversation activity
@@ -203,15 +221,19 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
         // Stop the service if it is running
         if (SingletonServiceManager.isMyServiceRunning) {
-
             stopService(Intent(this, NotificationService::class.java))
         }
 
         // Get the hardware manager
         mModRfUartManager.changeContext(this, this)
 
-
-        Toast.makeText(this, "ioiouhku", Toast.LENGTH_SHORT).show()
+        // Update userName
+        lifecycleScope.launch{
+            userWithMessagesViewModel.setUserName(UUID.fromString(mModRfUartManager.companion.userUUID),
+                sharedPreferences.getString(userNameKey, "unknown").toString()
+            )
+            mModRfUartManager.companion.userName = sharedPreferences.getString(userNameKey, "unknown").toString()
+        }
 
         // Check if USB connected
         if(!usbPermissionRequestPending){
@@ -239,6 +261,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
         const val USER_NAME = "user_name"
         const val RECEIVER_UUID = "receiver_uuid"
         const val KEY_TEXT_REPLY = "key_text_reply"
+            const val PERMISSION_CODE_GALLERY = 100
     }
 
     //-------------------------------------------------------------------
@@ -399,6 +422,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 )
                 userWithMessagesViewModel.insertUser(newConversation)
                 userWithMessagesViewModel.setUserOnline(UUID.fromString(device.userUUID))
+                userWithMessagesViewModel.setUserName(UUID.fromString(device.userUUID), device.userName)
             }
         }
     }
@@ -418,6 +442,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
             )
             userWithMessagesViewModel.insertUser(newConversation)
             userWithMessagesViewModel.setUserOnline(UUID.fromString(device.userUUID))
+            userWithMessagesViewModel.setUserName(UUID.fromString(device.userUUID), device.userName)
         }
     }
 
@@ -488,7 +513,7 @@ class MainActivity : AppCompatActivity(), ModRfUartManager.Listener {
                 isDeviceOpen = true
 
                 // Wait 2s before launching the scan to be sure everything is ok (anti-rebound)
-                sleep(2000)
+                sleep(1000)
 
                 usbPermissionRequestPending = false
 

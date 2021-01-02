@@ -9,10 +9,22 @@
     android:paddingEnd="60dp"
     android:clipToPadding="false">
 
+    <TextView
+        android:id="@+id/conversation_day_img_received"
+        android:layout_width="wrap_content"
+        android:layout_height="25dp"
+        android:layout_centerHorizontal="true"
+        android:text="Day"
+        android:paddingHorizontal="15dp"
+        android:textColor="@color/colorMessageReceived"
+        android:layout_marginVertical="10dp"
+        android:background="@drawable/ic_baseline_date_background"/>
+
     <ImageView
         android:id="@+id/avatar_image_received"
         android:layout_width="32dp"
         android:layout_height="32dp"
+        android:layout_below="@+id/conversation_day_img_received"
         android:layout_alignParentStart="true"
         android:padding="3.5dp"
         android:background="@drawable/ic_circle_avatar"
@@ -36,6 +48,7 @@
         android:layout_width="250dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_below="@+id/conversation_day_img_received"
         android:layout_toEndOf="@+id/avatar_image_received"
         android:adjustViewBounds="true"
         android:background="@drawable/ic_bubble_message_received"

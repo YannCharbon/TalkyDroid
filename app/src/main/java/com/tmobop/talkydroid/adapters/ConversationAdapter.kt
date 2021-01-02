@@ -53,17 +53,25 @@ class ConversationAdapter(private val context: Context, private val messageList:
 
     //------------------------------------------
     open class MessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        open fun bind(context: Context, message: MessageEntity) {}
+        open fun bind(context: Context, message: MessageEntity, isSameDay: Boolean) {}
     }
 
     //------------------------------------------
     class MessageSendViewHolder(view: View) : MessageViewHolder(view) {
         private val textViewMessageContent = view.findViewById<TextView>(R.id.message_send)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_message_send)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_message_send)
 
-        override fun bind(context: Context, message: MessageEntity) {
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean) {
             textViewMessageContent.text = message.content
             textViewMessageTime.text = DateUtils.fromMillisToTimeString(message.time)
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
     }
 
@@ -72,11 +80,19 @@ class ConversationAdapter(private val context: Context, private val messageList:
         private val textViewMessageContent = view.findViewById<TextView>(R.id.message_received)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_message_received)
         private val imageViewMessageAvatar = view.findViewById<ImageView>(R.id.avatar_message_received)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_message_received)
 
-        override fun bind(context: Context, message: MessageEntity) {
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean) {
             textViewMessageContent.text = message.content
             textViewMessageTime.text = DateUtils.fromMillisToTimeString(message.time)
             imageViewMessageAvatar.setImageResource(R.drawable.ic_baseline_unknown_user)
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
     }
 
@@ -84,10 +100,18 @@ class ConversationAdapter(private val context: Context, private val messageList:
     class ImageSendViewHolder(view: View) : MessageViewHolder(view) {
         private val imageViewMessageContent = view.findViewById<ImageView>(R.id.image_send)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_image_send)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_img_send)
 
-        override fun bind(context: Context, message: MessageEntity) {
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean) {
             imageViewMessageContent.setImageURI(Uri.parse(message.content))
             textViewMessageTime.text = DateUtils.fromMillisToTimeString(message.time)
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
     }
 
@@ -95,13 +119,21 @@ class ConversationAdapter(private val context: Context, private val messageList:
     class ImageReceivedViewHolder(view: View) : MessageViewHolder(view) {
         private val imageViewMessageContent = view.findViewById<ImageView>(R.id.image_received)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_image_received)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_img_received)
         private val imageViewMessageAvatar =
             view.findViewById<ImageView>(R.id.avatar_image_received)
 
-        override fun bind(context: Context, message: MessageEntity) {
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean) {
             imageViewMessageContent.setImageURI(Uri.parse(message.content))
             textViewMessageTime.text = DateUtils.fromMillisToTimeString(message.time)
             imageViewMessageAvatar.setImageResource(R.drawable.ic_baseline_unknown_user)
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
     }
 
@@ -110,6 +142,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
 
         private val mapViewLocation = view.findViewById<MapView>(R.id.map_loc_send)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_loc_send)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_loc_send)
         private lateinit var map: GoogleMap
         private lateinit var context: Context
         private lateinit var latLng: LatLng
@@ -125,7 +158,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
             }
         }
 
-        override fun bind(context: Context, message: MessageEntity){
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean){
             this.context = context
 
             // Display the message time
@@ -138,7 +171,13 @@ class ConversationAdapter(private val context: Context, private val messageList:
             latLng = LatLng(latitude, longitude)
             setLocation()
 
-
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
 
         override fun onMapReady(googleMap: GoogleMap?) {
@@ -146,7 +185,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
             if (googleMap != null) {
                 map = googleMap
             } else {
-                Toast.makeText(context, "Map is null", Toast.LENGTH_LONG).show()
+                //Toast.makeText(context, "Map is null", Toast.LENGTH_LONG).show()
                 return
             }
             setLocation()
@@ -154,7 +193,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
 
         private fun setLocation() {
             if (!::map.isInitialized){
-                Toast.makeText(context, "Map is not initialized", Toast.LENGTH_LONG).show()
+                //Toast.makeText(context, "Map is not initialized", Toast.LENGTH_LONG).show()
                 return
             }
             with(map) {
@@ -171,6 +210,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
 
         private val mapViewLocation = view.findViewById<MapView>(R.id.map_loc_received)
         private val textViewMessageTime = view.findViewById<TextView>(R.id.time_location_received)
+        private val textViewDate = view.findViewById<TextView>(R.id.conversation_day_loc_received)
         private lateinit var map: GoogleMap
         private lateinit var context: Context
         private lateinit var latLng: LatLng
@@ -188,7 +228,7 @@ class ConversationAdapter(private val context: Context, private val messageList:
             }
         }
 
-        override fun bind(context: Context, message: MessageEntity){
+        override fun bind(context: Context, message: MessageEntity, isSameDay: Boolean){
             this.context = context
 
             // Display the message time
@@ -200,6 +240,14 @@ class ConversationAdapter(private val context: Context, private val messageList:
             longitude = cords[1].toDouble()
             latLng = LatLng(latitude, longitude)
             setLocation()
+
+            if (!isSameDay) {
+                textViewDate.visibility = View.VISIBLE
+                textViewDate.text = DateUtils.formatDate(message.time)
+            }
+            else {
+                textViewDate.visibility = View.GONE
+            }
         }
 
         override fun onMapReady(googleMap: GoogleMap?) {
@@ -300,14 +348,24 @@ class ConversationAdapter(private val context: Context, private val messageList:
     }
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
+
         val message = messageList[position]
+        var isSameDay = false
+
+        if (position > 0) {
+            val previousMessage = messageList[position - 1]
+            if (DateUtils.formatDate(message.time) == DateUtils.formatDate(previousMessage.time)) {
+                isSameDay = true
+            }
+        }
+
         when (holder) {
-            is MessageSendViewHolder -> holder.bind(context, message)
-            is MessageReceivedViewHolder -> holder.bind(context, message)
-            is ImageSendViewHolder -> holder.bind(context, message)
-            is ImageReceivedViewHolder -> holder.bind(context, message)
-            is LocationSendViewHolder -> holder.bind(context, message)
-            is LocationReceivedViewHolder -> holder.bind(context, message)
+            is MessageSendViewHolder -> holder.bind(context, message, isSameDay)
+            is MessageReceivedViewHolder -> holder.bind(context, message, isSameDay)
+            is ImageSendViewHolder -> holder.bind(context, message, isSameDay)
+            is ImageReceivedViewHolder -> holder.bind(context, message, isSameDay)
+            is LocationSendViewHolder -> holder.bind(context, message, isSameDay)
+            is LocationReceivedViewHolder -> holder.bind(context, message, isSameDay)
             else -> throw IllegalArgumentException()
         }
     }
@@ -316,6 +374,11 @@ class ConversationAdapter(private val context: Context, private val messageList:
     object DateUtils {
         fun fromMillisToTimeString(millis: Long): String {
             val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+            return format.format(millis)
+        }
+
+        fun formatDate(millis : Long) : String {
+            val format = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
             return format.format(millis)
         }
     }

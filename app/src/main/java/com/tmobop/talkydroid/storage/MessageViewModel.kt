@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
+import java.util.*
 
 
 class MessageViewModel(application: Application) : AndroidViewModel(application) {
@@ -22,5 +23,9 @@ class MessageViewModel(application: Application) : AndroidViewModel(application)
 
     suspend fun insertMessage(message: MessageEntity) {
         repository.insertMessage(message)
+    }
+
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>> {
+        return repository.getAllMessagesFromUserId(senderId)
     }
 }

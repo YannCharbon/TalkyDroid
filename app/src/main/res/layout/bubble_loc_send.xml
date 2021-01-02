@@ -8,8 +8,20 @@
     android:paddingStart="10dp"
     android:clipToPadding="false">
 
+    <TextView
+        android:id="@+id/conversation_day_loc_send"
+        android:layout_width="wrap_content"
+        android:layout_height="25dp"
+        android:layout_centerHorizontal="true"
+        android:text="Day"
+        android:paddingHorizontal="15dp"
+        android:textColor="@color/colorMessageReceived"
+        android:layout_marginVertical="10dp"
+        android:background="@drawable/ic_baseline_date_background"/>
+
     <RelativeLayout
         android:id="@+id/relativeLayout_loc_send"
+        android:layout_below="@+id/conversation_day_loc_send"
         android:layout_width="250dp"
         android:layout_height="wrap_content"
         android:padding="10dp"

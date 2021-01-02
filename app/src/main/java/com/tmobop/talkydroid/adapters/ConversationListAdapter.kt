@@ -1,5 +1,7 @@
 package com.tmobop.talkydroid.adapters
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.view.LayoutInflater
@@ -19,6 +21,7 @@ import java.util.*
 
 
 class ConversationListAdapter(
+    private val context: Context,
     private val conversationList: MutableList<UserWithMessages>
 ) : RecyclerView.Adapter<ConversationListAdapter.ConversationViewHolder>() {
 
@@ -77,9 +80,11 @@ class ConversationListAdapter(
             holder.imageViewConversationAvatar.setImageResource(R.drawable.ic_baseline_unknown_user)
         }
         else {
+            val avatarUri = Uri.parse(conversationList[position].userEntity!!.avatar)
+
             // Round image
             Picasso.get()
-                .load(Uri.parse(conversationList[position].userEntity!!.avatar))
+                .load(avatarUri)
                 .error(R.drawable.ic_baseline_unknown_user)
                 .placeholder(R.drawable.ic_baseline_unknown_user)
                 .transform(CircleTransformation())

@@ -408,7 +408,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
                                 val packetByteArray = packetFrameToByteArray(responsePacket)
                                 serialPort!!.write(packetByteArray)
-                            } else if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_ANSWER){
+                            } else if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_ANSWER) {
                                 // if discover answer -> store new device
                                 timeoutState = TimeoutState.CANCELLED
                                 Timer("TimerTimeout").cancel()
@@ -417,7 +417,21 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                     address = dataPacketFrame.senderAddress,
                                     userName = String(dataPacketDiscoverContent.userName)
                                 )
-                                devicesInChannel.add(newDevice)
+
+                                var deviceAlreadyExistInChannel = false
+                                var l = 0
+                                for (device in devicesInChannel) {
+                                    if (device.userUUID == newDevice.userUUID) {
+                                        deviceAlreadyExistInChannel = true
+                                        devicesInChannel[l] = newDevice
+                                        break
+                                    }
+                                    l++
+                                }
+                                if (!deviceAlreadyExistInChannel) {
+                                    devicesInChannel.add(newDevice)
+                                }
+
                             } else if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_INFO){
                                 // if discover info -> store new device
                                 var newDevice = DeviceInChannel(
@@ -425,7 +439,20 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                     address = dataPacketFrame.senderAddress,
                                     userName = String(dataPacketDiscoverContent.userName)
                                 )
-                                devicesInChannel.add(newDevice)
+
+                                var deviceAlreadyExistInChannel = false
+                                var l = 0
+                                for (device in devicesInChannel) {
+                                    if (device.userUUID == newDevice.userUUID) {
+                                        deviceAlreadyExistInChannel = true
+                                        devicesInChannel[l] = newDevice
+                                        break
+                                    }
+                                    l++
+                                }
+                                if (!deviceAlreadyExistInChannel) {
+                                    devicesInChannel.add(newDevice)
+                                }
 
                                 if(listener != null){
                                     listener.onDeviceJoinedNetwork(newDevice)
@@ -550,7 +577,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
                     val packetByteArray = packetFrameToByteArray(packet)
                     serialPort!!.write(packetByteArray)
-                    Timer("TimerTimeout", false).schedule(100) {
+                    Timer("TimerTimeout", false).schedule(150) {
                         if(timeoutState == TimeoutState.PENDING){
                             timeoutState = TimeoutState.OCCURED
                             this.cancel()

@@ -1,12 +1,18 @@
 package com.tmobop.talkydroid.activities
 
 import android.Manifest
+import android.R.drawable
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.MenuItem
@@ -76,6 +82,11 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     private lateinit var userName : String
     private var isUserOnline: Boolean = false
 
+    // Shared preferences
+    private val userINFO : String = "user_information"
+    private lateinit var sharedPreferences: SharedPreferences
+    private val backgrounKey = "background_key"
+
     // Hardware variables
     private lateinit var mModRfUartManager: ModRfUartManager
 
@@ -118,15 +129,17 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         userWithMessagesViewModel = ViewModelProvider(this).get(UserWithMessagesViewModel::class.java)
 
         // Get users from database
-        messagesViewModel.getAllMessages().observe(this, { messages ->
-            conversationAdapter.swapMessages(messages)
+        messagesViewModel.getAllMessagesFromUserId(UUID.fromString(receiverUUID)).observe(
+            this,
+            { messages ->
+                conversationAdapter.swapMessages(messages)
 
-            // Scroll the RecyclerView to the last added element
-            conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1)
-        })
+                // Scroll the RecyclerView to the last added element
+                conversationRecyclerView.scrollToPosition(conversationAdapter.itemCount - 1)
+            })
 
         // Observe the database to see if user become online or if userAvatar change
-        userWithMessagesViewModel.getAllUsersWithMessages().observe(this, {usersWithMessage ->
+        userWithMessagesViewModel.getAllUsersWithMessages().observe(this, { usersWithMessage ->
 
             // Get the senderEntity
             val senderEntity = usersWithMessage.findLast { userWithMessages ->
@@ -146,8 +159,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
             if (senderEntity != null) {
                 if (senderEntity.userEntity?.avatar == "") {
                     imageAvatarImageView.setImageResource(R.drawable.ic_baseline_unknown_user)
-                }
-                else {
+                } else {
                     // Round image
                     Picasso.get()
                         .load(Uri.parse(senderEntity.userEntity!!.avatar))
@@ -166,8 +178,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     imageAvatarImageView.alpha = 1F
                     isUserOnline = true
                     conversationEditText.isEnabled = true
-                }
-                else {
+                } else {
                     imageOnlineImageView.setImageResource(R.drawable.ic_baseline_offline)
                     btnSendMessage.setBackgroundResource(R.drawable.ic_baseline_cannotsend_background)
                     imageAvatarImageView.alpha = 0.5F
@@ -242,7 +253,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
                 btnSendImage.setOnClickListener {
                     val gallery = Intent(
-                        Intent.ACTION_PICK,
+                        Intent.ACTION_OPEN_DOCUMENT,
                         MediaStore.Images.Media.INTERNAL_CONTENT_URI
                     )
                     startActivityForResult(gallery, PICK_IMAGE_FROM_GALLERY)
@@ -351,6 +362,27 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         btnSettings.setOnClickListener {
             showSettingsPopup(btnSettings)
         }
+
+        //------------------------------- Background image -----------------------------------------
+        // Get shared preferences
+        sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
+
+        // Check if there is already a background in shared preferences
+        if (sharedPreferences.contains(backgrounKey)) {
+
+            // Check if permission granted
+            if (isStoragePermissionGranted()) {
+
+                // Get the background from shared preferences
+                val backgroundPath = sharedPreferences.getString(backgrounKey, "")
+
+                // Set the background with the image
+                val conversationLinearLayout = findViewById<LinearLayout>(R.id.conversation_linearLayout)
+                val bitmap : Bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, Uri.parse(backgroundPath))
+                val drawable : Drawable = BitmapDrawable(this.resources, bitmap)
+                conversationLinearLayout.setBackgroundDrawable(drawable)
+            }
+        }
     }
 
     //---------------------------------------------------------------------
@@ -430,8 +462,27 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
 
             // Add user avatar to gallery
             lifecycleScope.launch {
-                userWithMessagesViewModel.setUserAvatar(UUID.fromString(receiverUUID), imageUriFromGallery.toString())
+                userWithMessagesViewModel.setUserAvatar(
+                    UUID.fromString(receiverUUID),
+                    imageUriFromGallery.toString()
+                )
             }
+        }
+
+        //------------------------------- Set background image
+        if (resultCode == RESULT_OK && requestCode == SET_BACKGROUND_FROM_GALLERY) {
+
+            imageUriFromGallery = data?.data
+
+            val editor: SharedPreferences.Editor = sharedPreferences.edit()
+            editor.putString(backgrounKey, imageUriFromGallery.toString())
+            editor.apply()
+
+            val conversationLinearLayout = findViewById<LinearLayout>(R.id.conversation_linearLayout)
+            val bitmap : Bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, imageUriFromGallery)
+            val drawable : Drawable = BitmapDrawable(this.resources, bitmap)
+
+            conversationLinearLayout.setBackgroundDrawable(drawable)
         }
     }
 
@@ -510,7 +561,11 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     val longitude = it.longitude.toString()
 
                     // Display the coords
-                    Toast.makeText(this, "Latitude = $latitude, Longitude = $longitude", Toast.LENGTH_LONG).show()
+                    Toast.makeText(
+                        this,
+                        "Latitude = $latitude, Longitude = $longitude",
+                        Toast.LENGTH_LONG
+                    ).show()
 
                     // Create the message to send
                     val message = MessageEntity(
@@ -590,12 +645,43 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
                     }
                 }
 
+                // Delete user
+                R.id.conversation_settings_deleteUser -> {
+                    Toast.makeText(this, "User deleted", Toast.LENGTH_SHORT).show()
+                    lifecycleScope.launch {
+                        userWithMessagesViewModel.deleteUserFromUserId(UUID.fromString(receiverUUID))
+                    }
+                    // start the notification service if it not already running
+                    if (!SingletonServiceManager.isMyServiceRunning) {
+                        val serviceIntent = Intent(this, NotificationService::class.java)
+                        startService(serviceIntent)
+                    }
+
+                    mainActivity = Intent(this, MainActivity::class.java)
+                    startActivity(mainActivity)
+                    finish()
+                }
+
                 // Set sender avatar
                 R.id.conversation_settings_setSenderAvatar -> {
                     // Open the gallery
                     val gallery =
-                        Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+                        Intent(
+                            Intent.ACTION_OPEN_DOCUMENT,
+                            MediaStore.Images.Media.INTERNAL_CONTENT_URI
+                        )
                     startActivityForResult(gallery, SET_SENDER_AVATAR_FROM_GALLERY)
+                }
+
+                // Set conversation background
+                R.id.conversation_settings_setBackground -> {
+                    // Open the gallery
+                    val gallery =
+                        Intent(
+                            Intent.ACTION_OPEN_DOCUMENT,
+                            MediaStore.Images.Media.INTERNAL_CONTENT_URI
+                        )
+                    startActivityForResult(gallery, SET_BACKGROUND_FROM_GALLERY)
                 }
             }
             true
@@ -611,6 +697,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         const val PICK_IMAGE_FROM_GALLERY = 100
         const val PICK_IMAGE_FROM_CAMERA = 101
         const val SET_SENDER_AVATAR_FROM_GALLERY = 102
+        const val SET_BACKGROUND_FROM_GALLERY = 103
     }
 
     override fun onTextReceived(string: String, senderUUID: String) {
@@ -618,7 +705,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         runOnUiThread {
             val message = MessageEntity(
                 messageId = null,
-                senderId = UUID.fromString(receiverUUID),
+                senderId = UUID.fromString(senderUUID),
                 receiverId = UUID.fromString(userUUID),
                 content = string,
                 time = Calendar.getInstance().timeInMillis,
@@ -636,7 +723,7 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
         runOnUiThread {
             val message = MessageEntity(
                 messageId = null,
-                senderId = UUID.fromString(receiverUUID),
+                senderId = UUID.fromString(senderUUID),
                 receiverId = UUID.fromString(userUUID),
                 content = location,
                 time = Calendar.getInstance().timeInMillis,
@@ -704,6 +791,28 @@ class ConversationActivity : AppCompatActivity(), ModRfUartManager.Listener {
     override fun onDeviceOpenError() {
         runOnUiThread {
             Toast.makeText(this, "Cannot open Device : permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun isStoragePermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                // Permission granted
+                true
+            } else {
+                // Permission revoked
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                    1
+                )
+                false
+            }
+        } else { //permission is automatically granted on sdk<23 upon installation
+            // Permission granted
+            true
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.tmobop.talkydroid.storage
 
 import androidx.lifecycle.LiveData
+import java.util.*
 
 class MessageRepository(private val messageDao: MessageDao) {
 
@@ -30,5 +31,9 @@ class MessageRepository(private val messageDao: MessageDao) {
 
     fun getOrderedMessages(): LiveData<List<MessageEntity>> {
         return messageDao.getOrderedMessages()
+    }
+
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>> {
+        return messageDao.getAllMessagesFromUserId(senderId)
     }
 }

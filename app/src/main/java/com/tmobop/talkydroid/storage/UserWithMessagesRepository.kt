@@ -21,6 +21,10 @@ class UserWithMessagesRepository(private val userWithMessagesDao: UserWithMessag
         userWithMessagesDao.setUserOnline(id)
     }
 
+    suspend fun setUserName(id: UUID, userName: String) {
+        userWithMessagesDao.setUserName(id, userName)
+    }
+
     suspend fun deleteAllMessagesInConversation(senderId: UUID) {
         userWithMessagesDao.deleteAllMessagesInConversation(senderId)
     }
@@ -47,5 +51,13 @@ class UserWithMessagesRepository(private val userWithMessagesDao: UserWithMessag
 
     fun getMessagesFromUserIds(senderId: UUID, receiverId: UUID): LiveData<List<MessageEntity?>?> {
         return userWithMessagesDao.getMessagesFromUserIds(senderId, receiverId)
+    }
+
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>> {
+        return userWithMessagesDao.getAllMessagesFromUserId(senderId)
+    }
+
+    suspend fun deleteUserFromUserId(id: UUID) {
+        userWithMessagesDao.deleteUserFromUserId(id)
     }
 }

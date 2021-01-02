@@ -37,6 +37,10 @@ open class UserWithMessagesViewModel(application: Application) : AndroidViewMode
         repository.setUserOnline(id)
     }
 
+    suspend fun setUserName(id: UUID, userName: String) {
+        repository.setUserName(id, userName)
+    }
+
     suspend fun setUserAvatar(id: UUID, avatarPath: String) {
         repository.setUserAvatar(id, avatarPath)
     }
@@ -57,4 +61,11 @@ open class UserWithMessagesViewModel(application: Application) : AndroidViewMode
         return repository.getUserWithMessagesFromId(id)
     }
 
+    fun getAllMessagesFromUserId(senderId: UUID): LiveData<List<MessageEntity>> {
+        return repository.getAllMessagesFromUserId(senderId)
+    }
+
+    suspend fun deleteUserFromUserId(id: UUID) {
+        repository.deleteUserFromUserId(id)
+    }
 }

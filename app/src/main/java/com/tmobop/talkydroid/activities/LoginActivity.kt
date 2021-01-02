@@ -16,9 +16,11 @@ import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.ViewModelProvider
 import com.squareup.picasso.Picasso
 import com.tmobop.talkydroid.R
 import com.tmobop.talkydroid.classes.CircleTransformation
+import com.tmobop.talkydroid.storage.UserWithMessagesViewModel
 import java.util.*
 
 
@@ -36,6 +38,9 @@ class LoginActivity : AppCompatActivity() {
     private val userNameKey = "userNameKey"
     private val userAvatarPathKey = "userAvatarPathKey"
 
+    // Database
+    private lateinit var userWithMessagesViewModel: UserWithMessagesViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -45,6 +50,9 @@ class LoginActivity : AppCompatActivity() {
         userNameEditText = findViewById(R.id.login_username_editText)
         loginButton = findViewById(R.id.login_button)
         avatarImageButton = findViewById(R.id.login_avatar)
+
+        // View model
+        userWithMessagesViewModel = ViewModelProvider(this).get(UserWithMessagesViewModel::class.java)
 
         //---------------------- get the user UUID back -------------------------------
 
@@ -95,7 +103,7 @@ class LoginActivity : AppCompatActivity() {
 
         //---- Avatar image button
         avatarImageButton.setOnClickListener {
-            val gallery = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
+            val gallery = Intent(Intent.ACTION_OPEN_DOCUMENT, MediaStore.Images.Media.INTERNAL_CONTENT_URI)
             startActivityForResult(gallery, pickImage)
         }
     }
@@ -118,7 +126,7 @@ class LoginActivity : AppCompatActivity() {
             sharedPreferences = getSharedPreferences(userINFO, Context.MODE_PRIVATE)
             val editor: Editor = sharedPreferences.edit()
             editor.putString(userAvatarPathKey, imageUri.toString())
-            Toast.makeText(this, imageUri.toString(), Toast.LENGTH_LONG).show()
+            //Toast.makeText(this, imageUri.toString(), Toast.LENGTH_LONG).show()
             editor.apply()
 
         }
