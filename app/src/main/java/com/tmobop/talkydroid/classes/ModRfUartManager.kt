@@ -15,6 +15,7 @@ import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import java.text.Normalizer
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.concurrent.schedule
@@ -75,8 +76,8 @@ class ModRfUartManager(context: Context, listener: Listener) {
     )
 
     data class UsbDeviceProperties(
-        val deviceName : String,
-        val manufacturerName : String?,
+        val deviceName: String,
+        val manufacturerName: String?,
         val productName: String?,
         val id: Int
     )
@@ -364,8 +365,9 @@ class ModRfUartManager(context: Context, listener: Listener) {
                     when(readPacketList[0].dataType){
                         TYPE_TEXT -> {
                             var resultText: String = ""
-                            for (packet in readPacketList){
-                                val dataPacketContentTextContent = byteArrayToTextContent(packet.content)
+                            for (packet in readPacketList) {
+                                val dataPacketContentTextContent =
+                                    byteArrayToTextContent(packet.content)
                                 resultText += String(dataPacketContentTextContent.text)
                             }
 
@@ -374,8 +376,9 @@ class ModRfUartManager(context: Context, listener: Listener) {
                         }
                         TYPE_LOC -> {
                             var resultText: String = ""
-                            for (packet in readPacketList){
-                                val dataPacketContentTextContent = byteArrayToTextContent(packet.content)
+                            for (packet in readPacketList) {
+                                val dataPacketContentTextContent =
+                                    byteArrayToTextContent(packet.content)
                                 resultText += String(dataPacketContentTextContent.text)
                             }
 
@@ -386,12 +389,14 @@ class ModRfUartManager(context: Context, listener: Listener) {
                         TYPE_DISCOVER -> {
 
                             // there should be only one packet in list
-                            val dataPacketDiscoverContent = byteArrayToDiscoverContent(readPacketList[0].content)
+                            val dataPacketDiscoverContent = byteArrayToDiscoverContent(
+                                readPacketList[0].content
+                            )
 
-                            if(dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_REQUEST){
+                            if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_REQUEST) {
                                 // if discover request -> Build answer
                                 val responsePacketContent = TalkyDataPacketDiscoverContent(
-                                    requestType =  DISCOVER_REQUEST_TYPE_ANSWER,
+                                    requestType = DISCOVER_REQUEST_TYPE_ANSWER,
                                     userUUID = getBytesFromUUID(UUID.fromString(userUUID))!!,
                                     userNameLength = userName.length.toUByte(),
                                     userName = userName.toByteArray()
@@ -403,7 +408,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                     packetsNumber = 1u,
                                     packetId = 0u,
                                     dataType = TYPE_DISCOVER,
-                                    content =  discoverContentToByteArray(responsePacketContent)
+                                    content = discoverContentToByteArray(responsePacketContent)
                                 )
 
                                 val packetByteArray = packetFrameToByteArray(responsePacket)
@@ -432,7 +437,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                     devicesInChannel.add(newDevice)
                                 }
 
-                            } else if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_INFO){
+                            } else if (dataPacketDiscoverContent.requestType == DISCOVER_REQUEST_TYPE_INFO) {
                                 // if discover info -> store new device
                                 var newDevice = DeviceInChannel(
                                     userUUID = getUUIDFromBytes(dataPacketDiscoverContent.userUUID).toString(),
@@ -454,7 +459,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
                                     devicesInChannel.add(newDevice)
                                 }
 
-                                if(listener != null){
+                                if (listener != null) {
                                     listener.onDeviceJoinedNetwork(newDevice)
                                 }
                             }
@@ -470,14 +475,21 @@ class ModRfUartManager(context: Context, listener: Listener) {
 
     }
 
+    fun unaccent(src: String?): String {
+        return Normalizer
+            .normalize(src, Normalizer.Form.NFD)
+            .replace("[^\\p{ASCII}]".toRegex(), "")
+    }
+
     public fun writeText(text: String, destUserUUID: String, isLocation: Boolean = false) : Int{
         if(portIsOpen){
+            var textWithoutAccent = unaccent(text)
 
             var destAddress: UByte = uuidToAddress(destUserUUID)
 
             val listener = getListener()
 
-            val packetsNumber = text.length / TEXT_CONTENT_USABLE_SIZE + 1
+            val packetsNumber = textWithoutAccent.length / TEXT_CONTENT_USABLE_SIZE + 1
             var packets = ArrayList<ModRfUartManager.TalkyDataPacketFrame>()
             for(i in 0 until packetsNumber){
                 try {
@@ -485,10 +497,10 @@ class ModRfUartManager(context: Context, listener: Listener) {
                     var contentText: ByteArray? = null
                     if(i < packetsNumber - 1){
                         packetTextLen = (TEXT_CONTENT_USABLE_SIZE).toUByte()
-                        contentText = text.substring(i*TEXT_CONTENT_USABLE_SIZE until (i+1)*TEXT_CONTENT_USABLE_SIZE).toByteArray()
+                        contentText = textWithoutAccent.substring(i * TEXT_CONTENT_USABLE_SIZE until (i + 1) * TEXT_CONTENT_USABLE_SIZE).toByteArray()
                     } else {
-                        packetTextLen = (text.length % TEXT_CONTENT_USABLE_SIZE).toUByte()
-                        contentText = text.substring(i*TEXT_CONTENT_USABLE_SIZE).toByteArray()
+                        packetTextLen = (textWithoutAccent.length % TEXT_CONTENT_USABLE_SIZE).toUByte()
+                        contentText = textWithoutAccent.substring(i * TEXT_CONTENT_USABLE_SIZE).toByteArray()
                     }
 
                     var packetContent = ModRfUartManager.TalkyDataPacketTextContent(
@@ -535,7 +547,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
                 }
 
                 return SUCCESS
-            } catch(e: Exception){
+            } catch (e: Exception){
                 listener!!.onError("Could not write packet", e)
             }
 
@@ -555,7 +567,7 @@ class ModRfUartManager(context: Context, listener: Listener) {
             GlobalScope.launch {
                 for(i in 1..MAX_DEV_ADDRESS){
 
-                    listener.onDiscoverProgress(i,MAX_DEV_ADDRESS)
+                    listener.onDiscoverProgress(i, MAX_DEV_ADDRESS)
 
                     val packetContent = TalkyDataPacketDiscoverContent(
                         DISCOVER_REQUEST_TYPE_REQUEST,
